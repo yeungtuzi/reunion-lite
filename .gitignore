@@ -1,0 +1,6 @@
+build/
+tools/
+*.log
+ReunionLite.ini
+campaign.cache
+.rl_*
