@@ -6,6 +6,8 @@
 
 ![Reunion Lite 界面](docs/screenshot.png)
 
+> **这是一个 Reunion 的极简版本，只保留了核心的任务包 / Mod 加载功能，适用于单机玩家。现在只支持 Windows 和原版游戏文件；计划后续通过 vera20k 引擎增加 Linux / macOS 支持。**
+
 ## 这是什么
 
 原版 `Reunion.exe` 是一个基于 MonoGame / XNA 的完整客户端，带大厅、更新器、预览图渲染、皮肤、音乐播放器等大量功能。它的代价是启动慢、常驻 CPU/GPU 开销高，而且每次启动都会重新扫描全部战役。
@@ -124,6 +126,12 @@ Reunion Lite 只保留核心链路：
 - 存档统一在 `Run\Saved Games` 下按任务包分目录，不写客户端自己的 `Save.ini` 评分元数据。
 - 当前 release 为 Windows x64；源码可直接用 i686 MinGW 重新编译 32 位版本。
 
+
+## 相关项目
+
+- [Reunion / RF-Client](https://github.com/Snowy-Studio/RF-Client) — 原「重聚未来」客户端（GPLv3），本项目的行为与配置格式参考。官网：[www.yra2.com](https://www.yra2.com)
+- [vera20k](https://github.com/YuriPlanet/vera20k) — 用 Rust 重写的《红色警戒2：尤里的复仇》引擎；后续 Linux / macOS 支持将基于它。文档：[yuriplanet.github.io/vera20k](https://yuriplanet.github.io/vera20k/zh-CN/)
+
 ## 致谢
 
 - [Snowy-Studio / RF-Client](https://github.com/Snowy-Studio/RF-Client)：原「重聚未来」客户端（GPLv3）。本项目的战役格式、`spawn.ini` 字段、选项语义与启动流程均以其为行为参考。
@@ -134,3 +142,4 @@ Reunion Lite 只保留核心链路：
 ## License
 
 GPLv3，详见 [LICENSE](LICENSE)。
+
