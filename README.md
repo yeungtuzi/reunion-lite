@@ -1,8 +1,8 @@
-# Reunion Lite
+﻿# Reunion Lite
 
 轻量、离线、零第三方依赖的《红色警戒2 重聚未来》战役启动器。
 
-> 版本 0.1 · Windows x64 · GPLv3
+> 版本 0.1 · Windows x64 · Apache-2.0
 
 ![Reunion Lite 界面](docs/screenshot.png)
 
@@ -141,5 +141,6 @@ Reunion Lite 只保留核心链路：
 
 ## License
 
-GPLv3，详见 [LICENSE](LICENSE)。
+Apache License 2.0，详见 [LICENSE](LICENSE)。
+
 

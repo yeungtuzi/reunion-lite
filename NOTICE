@@ -1,0 +1,15 @@
+﻿Reunion Lite
+Copyright 2026 yeungtuzi
+
+This product is an independent, minimal launcher for the Reunion (重聚未来)
+Red Alert 2 / Yuri's Revenge client.
+
+Behavior, configuration formats and launch flow were studied from
+Snowy-Studio/RF-Client (https://github.com/Snowy-Studio/RF-Client, GPLv3).
+No source code from that project is included here.
+
+The application icon is taken from the Reunion client distribution
+(Resources/clienticon.ico).
+
+Red Alert 2 and Yuri's Revenge are trademarks of Electronic Arts Inc.
+No game assets are distributed with this project.
