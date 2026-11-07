@@ -21,16 +21,36 @@ bool ValidUtf8(const std::uint8_t* d, std::size_t n) {
     return true;
 }
 
+// Lenient conversion. Mission packs in the wild contain stray bytes that are
+// not valid GB18030 (e.g. "...Production \x90\x03? House,..." in
+// Maps/CP/1947675686005354497/all01umd.map). A single iconv() call stops at the
+// first EILSEQ and silently truncates the rest of the line, which corrupted the
+// patched map and made gamemd dereference a NULL tag string (crash at
+// 0x7C8D40). Replace each undecodable byte with '?' and keep going instead.
 std::string Iconv(const char* to, const char* from, const char* in, std::size_t inLen) {
     iconv_t cd = iconv_open(to, from);
     if (cd == reinterpret_cast<iconv_t>(-1)) return {};
-    std::string out(inLen * 4 + 8, '\0');
+    std::string out;
+    out.reserve(inLen + 32);
     char* src = const_cast<char*>(in);
     std::size_t srcLeft = inLen;
-    char* dst = out.data();
-    std::size_t dstLeft = out.size();
-    iconv(cd, &src, &srcLeft, &dst, &dstLeft);
-    out.resize(out.size() - dstLeft);
+    char buf[4096];
+    while (srcLeft) {
+        char* dst = buf;
+        std::size_t dstLeft = sizeof(buf);
+        std::size_t r = iconv(cd, &src, &srcLeft, &dst, &dstLeft);
+        out.append(buf, sizeof(buf) - dstLeft);
+        if (r != static_cast<std::size_t>(-1)) break;
+        if (errno == E2BIG) continue;
+        if (errno == EILSEQ || errno == EINVAL) {
+            out.push_back('?');
+            ++src;
+            --srcLeft;
+            iconv(cd, nullptr, nullptr, nullptr, nullptr);
+            continue;
+        }
+        break;
+    }
     iconv_close(cd);
     return out;
 }

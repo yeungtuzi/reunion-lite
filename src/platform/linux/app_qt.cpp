@@ -119,10 +119,13 @@ int main(int argc, char** argv) {
             return;
         }
 
-        const QString wine = qEnvironmentVariable("REUNION_WINE",
-            "/opt/steamos/steam/steamapps/common/Proton 11.0 (ARM64)/files/bin-arm64/wine");
-        const QString prefix = qEnvironmentVariable("REUNION_WINEPREFIX",
-            "/home/lf/.local/share/m1000/work/ra2-pfx");
+        // Launch through the Steam Linux Runtime so the 32-bit X11 libraries are
+        // available (see scripts/linux/ra2-launch.sh). Proton 11 (ARM64) has no
+        // 32-bit x86 support, and Steam's own launch path is broken on this box:
+        // -applaunch truncates the shortcut appid to 24 bits, and Proton's
+        // built-in steam.exe aborts in lsteamclient (assert "!status").
+        const QString launcher = qEnvironmentVariable("REUNION_LAUNCHER",
+            "/home/lf/.local/share/m1000/work/ra2-launch.sh");
         QString runDir = QString::fromStdString(plan.runDir);
         runDir.replace('\\', '/');
         const QString exe = plan.useAres ? "Syringe.exe" : "gamemd-spawn.exe";
@@ -133,20 +136,13 @@ int main(int argc, char** argv) {
 
         auto* proc = new QProcess(&win);
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-        env.insert("WINEPREFIX", prefix);
-        env.insert("WINEDLLPATH", "/opt/steamos/steam/steamapps/common/Proton 11.0 (ARM64)/files/lib/wine");
-        env.insert("LD_LIBRARY_PATH",
-                   "/opt/steamos/steam/steamapps/common/Proton 11.0 (ARM64)/files/lib/aarch64-linux-gnu:"
-                   "/opt/steamos/steam/steamapps/common/Proton 11.0 (ARM64)/files/lib");
-        env.insert("WINESERVER",
-                   "/opt/steamos/steam/steamapps/common/Proton 11.0 (ARM64)/files/bin-arm64/wineserver");
-        env.insert("DISPLAY", ":0");
-        env.insert("XDG_RUNTIME_DIR", "/run/user/1000");
-        env.insert("XAUTHORITY", qEnvironmentVariable("XAUTHORITY"));
+        env.insert("REUNION_EXE", exe);
+        if (qEnvironmentVariableIsEmpty("REUNION_DISPLAY"))
+            env.insert("REUNION_DISPLAY", ":3");
         proc->setProcessEnvironment(env);
         proc->setWorkingDirectory(runDir);
-        proc->setProgram(wine);
-        proc->setArguments(QStringList{exe} + args);
+        proc->setProgram("bash");
+        proc->setArguments(QStringList{launcher} + args);
         QObject::connect(proc, &QProcess::errorOccurred, [&, proc](QProcess::ProcessError) {
             qWarning("launch error: %s", qPrintable(proc->errorString()));
             status->showMessage("启动失败：" + proc->errorString());
