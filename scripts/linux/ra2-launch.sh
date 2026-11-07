@@ -28,8 +28,6 @@ if [ "${1:-}" = "--inside" ]; then
     export DISPLAY="$DISP" XDG_RUNTIME_DIR=/run/user/1000
     if [ "$DISP" = ":0" ]; then
         export XAUTHORITY="${XAUTHORITY:-$(ls /run/user/1000/xauth_* 2>/dev/null | head -1)}"
-    else
-        export XAUTHORITY=
     fi
     export WINEPREFIX="${REUNION_WINEPREFIX:-$C/pfx}"
     export WINESERVER="$P/files/bin/wineserver"
@@ -41,23 +39,35 @@ if [ "${1:-}" = "--inside" ]; then
     exec "$FEX/usr/bin/FEX" "$P/files/bin/wine" "${REUNION_EXE:-gamemd-spawn.exe}" "$@"
 fi
 
-# --- host side: make sure the dedicated Xorg and a WM exist -----------------
+# --- host side: (re)start the dedicated Xorg and a WM -----------------------
+# A long-lived :3 goes stale after VT switches: xdpyinfo still works but
+# winex11 fails to load ("no driver could be loaded") and the game runs with no
+# window. Restarting the dedicated display on every launch is cheap and makes
+# the launch deterministic.
 if [ "$DISP" != ":0" ]; then
-    if ! DISPLAY="$DISP" xdpyinfo >/dev/null 2>&1; then
-        sudo -n setsid Xorg "$DISP" vt8 -config /opt/steamos/xorg-m1000.conf \
-            -noreset -nolisten tcp -ac -logfile "$W/xorg-m1000.log" >/dev/null 2>&1 &
-        for _ in $(seq 1 40); do DISPLAY="$DISP" xdpyinfo >/dev/null 2>&1 && break; sleep 0.5; done
-    fi
-    if ! pgrep -x mutter >/dev/null 2>&1; then
-        DISPLAY="$DISP" setsid mutter --replace >/dev/null 2>&1 &
-        sleep 2
-    fi
+    for pid in $(pgrep -f "Xorg $DISP" 2>/dev/null); do sudo -n kill "$pid" 2>/dev/null; done
+    sleep 2
+    for pid in $(pgrep -f "Xorg $DISP" 2>/dev/null); do sudo -n kill -9 "$pid" 2>/dev/null; done
+    pkill -x mutter 2>/dev/null
+    sleep 1
+    sudo -n setsid Xorg "$DISP" vt8 -config /opt/steamos/xorg-m1000.conf \
+        -noreset -nolisten tcp -ac -logfile "$W/xorg-m1000.log" >/dev/null 2>&1 &
+    for _ in $(seq 1 40); do DISPLAY="$DISP" xdpyinfo >/dev/null 2>&1 && break; sleep 0.5; done
+    DISPLAY="$DISP" setsid mutter --replace >/dev/null 2>&1 &
+    sleep 2
 fi
 
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$S"
 export STEAM_COMPAT_DATA_PATH="$C"
-export DISPLAY=:0
-export XAUTHORITY="${XAUTHORITY:-$(ls /run/user/1000/xauth_* 2>/dev/null | head -1)}"
+# The runtime only maps the X socket that matches DISPLAY, so advertise the
+# display we actually want *before* entering the container (with :0 it maps
+# only X0 and winex11 cannot open :3 -> "no driver could be loaded").
+export DISPLAY="$DISP"
+if [ "$DISP" = ":0" ]; then
+    export XAUTHORITY="${XAUTHORITY:-$(ls /run/user/1000/xauth_* 2>/dev/null | head -1)}"
+else
+    unset XAUTHORITY
+fi
 exec "$FEX/fex-compat-tool" waitforexitandrun -- \
     "$RT/_v2-entry-point" --verb=waitforexitandrun -- \
     "$0" --inside "$@"
