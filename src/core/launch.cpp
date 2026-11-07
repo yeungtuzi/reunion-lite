@@ -13,7 +13,13 @@ namespace fs = std::filesystem;
 namespace rl {
 namespace {
 
-fs::path Fs(const std::string& utf8) { return fs::u8path(utf8); }
+fs::path Fs(const std::string& utf8) {
+    std::string p = utf8;
+#ifndef _WIN32
+    for (char& c : p) if (c == '\\') c = '/';
+#endif
+    return fs::u8path(p);
+}
 std::string U8(const fs::path& p) { return p.u8string(); }
 
 std::string LowerAscii(std::string s) {
