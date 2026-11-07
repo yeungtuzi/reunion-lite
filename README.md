@@ -2,11 +2,15 @@
 
 轻量、离线、零第三方依赖的《红色警戒2 重聚未来》战役启动器。
 
-> 版本 0.1 · Windows x64 · Apache-2.0
+> 版本 0.2 · Windows x64 · Linux arm64（国产 MTGPU 实测） · Apache-2.0
 
 ![Reunion Lite 界面](docs/screenshot.png)
 
-> **这是一个 Reunion 的极简版本，只保留了核心的任务包 / Mod 加载功能，适用于单机玩家。现在只支持 Windows 和原版游戏文件；计划后续通过 vera20k 引擎增加 Linux / macOS 支持。**
+> **这是一个 Reunion 的极简版本，只保留了核心的任务包 / Mod 加载功能，适用于单机玩家。**
+>
+> **0.2 起新增 Linux（ARM64）支持：原生 Qt6 启动器 + FEX/Proton 运行 32 位 `gamemd`，
+> 支持 Windows 与 Linux，已在国产 GPU（摩尔线程 M1000 / MTGPU）上实测进入任务。** 详见
+> [ARM64 Linux / M1000 指南](docs/ARM64-LINUX-MT1000.md)。
 
 ## 这是什么
 
@@ -36,12 +40,40 @@ Reunion Lite 只保留核心链路：
 
 从 [Releases](https://github.com/yeungtuzi/reunion-lite/releases) 下载：
 
-- `ReunionLite-0.1-win64.exe` — Windows x64
+- `ReunionLite-0.2-linux-arm64.tar.gz` — Linux arm64（启动器 + 启动脚本 + 指南）
+- `ReunionLite-0.1-win64.exe` — Windows x64（0.2 的 Windows 代码未改动，可继续用 0.1 或按下方说明自行构建）
 - `SHA256SUMS.txt` — 校验值
 
 把 exe 放到游戏根目录（与 `Reunion.exe`、`Maps`、`Mod&AI`、`Run` 同级），双击运行即可，无需安装。
 
 > 启动器会以 exe 所在目录、当前目录及其上级目录自动查找游戏根目录；从快捷方式或子目录启动也能定位。
+
+## Linux / arm64（0.2 新增，国产 MTGPU 实测）
+
+在 aarch64 Linux 上提供原生 **Qt6** 启动器，复用同一套 `src/core` 扫描 / 缓存 / 启动计划代码：
+
+- `src/platform/linux/runprep.cpp`：`Run/` 准备（基础文件、Mod/任务覆盖、地图补丁、`spawn.ini`、存档隔离）；
+- `src/platform/linux/encoding.cpp`：GB18030 ↔ UTF-8（对非法字节容错，避免地图 `[Tags]` 行被截断）；
+- `src/platform/linux/app_qt.cpp`：Qt6 Widgets 界面 + “启动游戏”；
+- `scripts/linux/ra2-launch.sh`：在 Steam Linux Runtime 里用 x86_64 Wine（FEX）拉起 32 位 `gamemd-spawn.exe`。
+
+![ARM64 Linux 上进入任务](docs/arm64-linux-mt1000.png)
+
+已在 **aarch64 + 摩尔线程 M1000 + KDE Plasma 6 Wayland** 上实测进入任务
+（盟军第一关，地图/建筑/单位正常渲染）。完整步骤、原理与排错见
+[ARM64 Linux / M1000 指南](docs/ARM64-LINUX-MT1000.md)。
+
+快速开始：
+
+```sh
+sudo apt install qt6-base-dev cmake g++
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+install -Dm755 scripts/linux/ra2-launch.sh "$HOME/.local/share/m1000/work/ra2-launch.sh"
+./build/reunion-lite-qt "$HOME/文档/ra2reunion"     # 选任务 → 启动游戏
+```
+
+> 需要 Steam（arm64）+ `Proton - Experimental` + `SteamLinuxRuntime_4` + `FEX-Emu`，
+> 以及游戏目录里的 `cnc-ddraw`（`renderer=gdi`）。启动器不负责自动安装这些。
 
 ## 使用
 
@@ -113,6 +145,15 @@ Reunion Lite 只保留核心链路：
 
 也可以把 MinGW 放到 `tools\mingw\mingw64\bin`，脚本会自动查找。
 
+Linux（Qt6 Widgets）：
+
+```sh
+sudo apt install qt6-base-dev cmake g++
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+# 产物: build/reunion-lite-qt
+```
+
 ### 可移植性
 
 - `src/core` 只依赖 C++17 标准库（`std::filesystem`、容器、文件流），无 Win32 调用。
@@ -124,7 +165,9 @@ Reunion Lite 只保留核心链路：
 - 没有实现原客户端的 CSF 繁体→简体转换、皮肤合并、主题/音乐打包、评分/成就。
 - 地图在 MIX 内时，资金/数值修复/自动存档/军备反转等“改写地图 INI”的选项无法写入（原客户端同样不处理）。
 - 存档统一在 `Run\Saved Games` 下按任务包分目录，不写客户端自己的 `Save.ini` 评分元数据。
-- 当前 release 为 Windows x64；源码可直接用 i686 MinGW 重新编译 32 位版本。
+- Windows release 仍为 x64；源码可直接用 i686 MinGW 重新编译 32 位版本。
+- Linux 版目前只在 aarch64 + M1000 + KDE Wayland 实测；启动器依赖 Steam Runtime 与
+  现成的 Proton 前缀，不做自动安装。
 
 
 ## 相关项目
