@@ -68,6 +68,14 @@ if [ "$DISP" = ":0" ]; then
 else
     unset XAUTHORITY
 fi
-exec "$FEX/fex-compat-tool" waitforexitandrun -- \
+# Show the game on the physical screen while it runs, then come back to the
+# desktop session.
+[ "$DISP" != ":0" ] && sudo -n chvt 8 2>/dev/null
+"$FEX/fex-compat-tool" waitforexitandrun -- \
     "$RT/_v2-entry-point" --verb=waitforexitandrun -- \
-    "$0" --inside "$@"
+    "$0" --inside "$@" &
+child=$!
+wait "$child"
+rc=$?
+[ "$DISP" != ":0" ] && sudo -n chvt 2 2>/dev/null
+exit $rc
