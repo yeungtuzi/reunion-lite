@@ -322,10 +322,120 @@ void PrepareSaves(const std::string& run, const rl::LaunchPlan& plan) {
     WriteLines(Join(run, kSaveMarker), markerLines);
 }
 
+// Replaces/creates keys inside one section of a CRLF ini file while keeping the
+// other lines (and comments) untouched.  RA2MD.ini and ddraw.ini both ship with
+// annotated templates we do not want to flatten.
+void SetIniKeysPreserving(const std::string& path, const std::string& section,
+                          const std::vector<std::pair<std::string, std::string>>& pairs) {
+    std::string text = ReadTextAuto(path);
+    std::vector<std::string> lines;
+    {
+        std::string cur;
+        for (char c : text) {
+            if (c == '\n') {
+                if (!cur.empty() && cur.back() == '\r') cur.pop_back();
+                lines.push_back(cur);
+                cur.clear();
+            } else {
+                cur.push_back(c);
+            }
+        }
+        if (!cur.empty()) lines.push_back(cur);
+    }
+
+    std::string wanted = section;
+    for (char& c : wanted)
+        if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+    std::size_t sectionStart = lines.size();
+    std::size_t sectionEnd = lines.size();
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+        std::string t = lines[i];
+        while (!t.empty() && (t.front() == ' ' || t.front() == '\t')) t.erase(t.begin());
+        if (t.size() < 2 || t.front() != '[') continue;
+        const std::size_t close = t.find(']');
+        if (close == std::string::npos) continue;
+        std::string name = t.substr(1, close - 1);
+        for (char& c : name)
+            if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+        if (name == wanted) {
+            sectionStart = i;
+            sectionEnd = lines.size();
+            for (std::size_t j = i + 1; j < lines.size(); ++j) {
+                std::string u = lines[j];
+                while (!u.empty() && (u.front() == ' ' || u.front() == '\t')) u.erase(u.begin());
+                if (!u.empty() && u.front() == '[') { sectionEnd = j; break; }
+            }
+            break;
+        }
+    }
+
+    std::vector<bool> used(pairs.size(), false);
+    auto apply = [&](std::string& line) {
+        std::string t = line;
+        const std::size_t eq = t.find('=');
+        if (eq == std::string::npos) return;
+        std::string key = t.substr(0, eq);
+        while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+        for (std::size_t k = 0; k < pairs.size(); ++k) {
+            if (key == pairs[k].first) {
+                line = pairs[k].first + "=" + pairs[k].second;
+                used[k] = true;
+                return;
+            }
+        }
+    };
+    if (sectionStart < lines.size()) {
+        for (std::size_t i = sectionStart + 1; i < sectionEnd; ++i) apply(lines[i]);
+        std::vector<std::string> extra;
+        for (std::size_t k = 0; k < pairs.size(); ++k)
+            if (!used[k]) extra.push_back(pairs[k].first + "=" + pairs[k].second);
+        lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(sectionEnd), extra.begin(),
+                     extra.end());
+    } else {
+        if (!lines.empty() && !lines.back().empty()) lines.push_back(std::string());
+        lines.push_back("[" + section + "]");
+        for (const auto& pair : pairs) lines.push_back(pair.first + "=" + pair.second);
+    }
+
+    std::string out;
+    for (const std::string& line : lines) out += line + "\r\n";
+    WriteTextAnsi(path, out);
+}
+
+void ApplyVideoProfile(const std::string& run, const VideoConfig& video) {
+    const std::string width = std::to_string(video.width);
+    const std::string height = std::to_string(video.height);
+    SetIniKeysPreserving(Join(run, "RA2MD.ini"), "Video",
+                         {{"Video.Windowed", "False"},
+                          {"NoWindowFrame", "False"},
+                          {"AllowHiResModes", "yes"},
+                          {"ScreenWidth", width},
+                          {"ScreenHeight", height},
+                          {"ClientResolutionX", width},
+                          {"ClientResolutionY", height},
+                          {"BorderlessWindowedClient", "False"},
+                          {"StretchMovies", "no"}});
+    SetIniKeysPreserving(Join(run, "ddraw.ini"), "ddraw",
+                         {{"width", width},
+                          {"height", height},
+                          {"fullscreen", "false"},
+                          {"windowed", "true"},
+                          {"maintas", "false"},
+                          {"maxfps", "60"},
+                          {"vsync", "false"},
+                          {"adjmouse", "true"},
+                          {"renderer", video.renderer},
+                          {"devmode", "false"},
+                          {"border", "true"},
+                          {"savesettings", "0"},
+                          {"resizable", "false"},
+                          {"center_window", "1"}});
+}
+
 } // namespace
 
 bool PrepareRun(const rl::LaunchPlan& plan, const rl::LaunchOptions& options, std::string& error,
-                std::vector<std::string>& warnings) {
+                std::vector<std::string>& warnings, const VideoConfig& video) {
     error.clear();
     warnings.clear();
     const std::string& root = plan.gameRoot;
@@ -435,6 +545,8 @@ bool PrepareRun(const rl::LaunchPlan& plan, const rl::LaunchOptions& options, st
             WriteTextAnsi(path, ini.Serialize());
         }
     }
+
+    ApplyVideoProfile(run, video);
 
     if (!WriteTextAnsi(Join(root, "spawn.ini"), plan.spawnIni)) return fail("无法写入 spawn.ini");
     if (!WriteTextAnsi(Join(run, "spawn.ini"), plan.spawnIni)) return fail("无法写入 Run/spawn.ini");

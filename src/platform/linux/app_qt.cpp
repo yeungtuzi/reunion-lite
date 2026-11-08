@@ -15,7 +15,10 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDesktopServices>
 #include <QDir>
+#include <QSize>
+#include <QUrl>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
@@ -57,6 +60,12 @@ namespace {
 
 QString Uid(const rl::Mission& m) {
     return QString::fromStdString(m.packId) + "#" + QString::number(m.index);
+}
+
+QString LogFilePath() {
+    const QString dir = QDir::homePath() + "/.local/share/reunion-lite";
+    QDir().mkpath(dir);
+    return dir + "/last-launch.log";
 }
 
 QString FindVera20k() {
@@ -300,9 +309,11 @@ int main(int argc, char** argv) {
     splitter->setSizes({230, 720, 520});
 
     auto* engineBadge = new QLabel(&win);
+    auto* resolutionLabel = new QLabel(&win);
     auto* countLabel = new QLabel(&win);
     auto* statusBar = new QStatusBar(&win);
     statusBar->addWidget(engineBadge);
+    statusBar->addPermanentWidget(resolutionLabel);
     statusBar->addPermanentWidget(countLabel);
     statusBar->addPermanentWidget(statusLabel);
 
@@ -431,6 +442,7 @@ int main(int argc, char** argv) {
         desc.replace('@', '\n');
         insDesc->setPlainText(desc);
         starBtn->setText(favorites.contains(Uid(*m)) ? "★" : "☆");
+        settings.setValue("lastMission", Uid(*m));
 
         modCombo->addItem(QString("默认（%1）").arg(
             m->defaultMod.empty() ? "YR" : QString::fromStdString(m->defaultMod)), "");
@@ -539,6 +551,20 @@ int main(int argc, char** argv) {
         fill();
         refreshMission();
         engineBadge->setText(engineName());
+        const QString lastUid = settings.value("lastMission").toString();
+        if (!lastUid.isEmpty()) {
+            for (int row = 0; row < table->rowCount(); ++row) {
+                const int idx = table->item(row, 0)->data(Qt::UserRole).toInt();
+                if (idx < 0 || idx >= static_cast<int>(g_campaign.missions.size())) continue;
+                if (Uid(g_campaign.missions[idx]) != lastUid) continue;
+                table->setCurrentCell(row, 0);
+                table->scrollToItem(table->item(row, 1));
+                break;
+            }
+        }
+        resolutionLabel->setText(QString("%1 × %2")
+                                     .arg(settings.value("videoWidth", 1280).toInt())
+                                     .arg(settings.value("videoHeight", 720).toInt()));
         setStatus(QString("任务包 %1 / 任务 %2 / 问题 %3")
                       .arg(g_campaign.packs.size())
                       .arg(g_campaign.missions.size())
@@ -595,6 +621,27 @@ int main(int argc, char** argv) {
             "不需要 Wine/Proton。", &dlg);
         hint->setWordWrap(true);
         form->addRow(hint);
+
+        heading("画面");
+        auto* resolution = new QComboBox(&dlg);
+        resolution->addItem("1024 × 768", QSize(1024, 768));
+        resolution->addItem("1280 × 720", QSize(1280, 720));
+        resolution->addItem("1920 × 1080", QSize(1920, 1080));
+        resolution->addItem("2560 × 1440", QSize(2560, 1440));
+        {
+            QSize cur(settings.value("videoWidth", 1280).toInt(),
+                      settings.value("videoHeight", 720).toInt());
+            const int idx = resolution->findData(cur);
+            resolution->setCurrentIndex(idx >= 0 ? idx : 1);
+        }
+        form->addRow("窗口分辨率", resolution);
+        auto* renderer = new QComboBox(&dlg);
+        renderer->addItem("GDI（默认）", "gdi");
+        renderer->addItem("OpenGL", "opengl");
+        renderer->addItem("Direct3D9", "direct3d9");
+        renderer->setCurrentIndex(
+            std::max(0, renderer->findData(settings.value("videoRenderer", "gdi").toString())));
+        form->addRow("渲染器（cnc-ddraw）", renderer);
 
         heading("高级");
         auto* hideOnLaunch = new QCheckBox("启动游戏后隐藏启动器（省电）", &dlg);
@@ -657,7 +704,28 @@ int main(int argc, char** argv) {
             settings.setValue("extraArgs", extraArgs->text().trimmed());
             settings.setValue("fpsCounter", fpsCounter->isChecked());
             settings.setValue("audioBuffer", audioBuffer->value());
+            const QSize res = resolution->currentData().toSize();
+            settings.setValue("videoWidth", res.width());
+            settings.setValue("videoHeight", res.height());
+            settings.setValue("videoRenderer", renderer->currentData().toString());
+            resolutionLabel->setText(QString("%1 × %2")
+                                         .arg(res.width())
+                                         .arg(res.height()));
             engineBadge->setText(engineName());
+        const QString lastUid = settings.value("lastMission").toString();
+        if (!lastUid.isEmpty()) {
+            for (int row = 0; row < table->rowCount(); ++row) {
+                const int idx = table->item(row, 0)->data(Qt::UserRole).toInt();
+                if (idx < 0 || idx >= static_cast<int>(g_campaign.missions.size())) continue;
+                if (Uid(g_campaign.missions[idx]) != lastUid) continue;
+                table->setCurrentCell(row, 0);
+                table->scrollToItem(table->item(row, 1));
+                break;
+            }
+        }
+        resolutionLabel->setText(QString("%1 × %2")
+                                     .arg(settings.value("videoWidth", 1280).toInt())
+                                     .arg(settings.value("videoHeight", 720).toInt()));
             const QString newRoot = gameRootEdit->text().trimmed();
             if (!newRoot.isEmpty() && newRoot != QString::fromStdString(root)) {
                 root = newRoot.toStdString();
@@ -689,7 +757,11 @@ int main(int argc, char** argv) {
         qWarning("plan ok, preparing run: %s", plan.runDir.c_str());
         std::string err;
         std::vector<std::string> warnings;
-        if (!rlwin::PrepareRun(plan, g_options, err, warnings)) {
+        rlwin::VideoConfig video;
+        video.width = settings.value("videoWidth", 1280).toInt();
+        video.height = settings.value("videoHeight", 720).toInt();
+        video.renderer = settings.value("videoRenderer", "gdi").toString().toStdString();
+        if (!rlwin::PrepareRun(plan, g_options, err, warnings, video)) {
             qWarning("prepare failed: %s", err.c_str());
             setStatus(QString::fromStdString("准备 Run 失败：" + err));
             return;
@@ -728,6 +800,8 @@ int main(int argc, char** argv) {
                 env.insert("VERA_AUDIO_BUFFER", QString::number(settings.value("audioBuffer").toInt()));
             proc->setProcessEnvironment(env);
             proc->setWorkingDirectory(runDir);
+            proc->setProcessChannelMode(QProcess::MergedChannels);
+            proc->setStandardOutputFile(LogFilePath());
             proc->setProgram(bin);
             proc->setArguments({"-SPAWN"});
             QObject::connect(proc, &QProcess::errorOccurred, [&, proc](QProcess::ProcessError) {
@@ -751,7 +825,7 @@ int main(int argc, char** argv) {
             running = proc;
             launchBtn->setEnabled(false);
             stopBtn->show();
-            logBtn->hide();
+            logBtn->show();
             engineBadge->setText("VERA20K");
             setStatus(QString("VERA20K 运行中：%1").arg(QString::fromStdString(mission->name)));
             return;
@@ -777,6 +851,8 @@ int main(int argc, char** argv) {
             env.insert("REUNION_DISPLAY", ":3");
         proc->setProcessEnvironment(env);
         proc->setWorkingDirectory(runDir);
+        proc->setProcessChannelMode(QProcess::MergedChannels);
+        proc->setStandardOutputFile(LogFilePath());
         proc->setProgram("bash");
         proc->setArguments(QStringList{launcher} + args);
         QObject::connect(proc, &QProcess::errorOccurred, [&, proc](QProcess::ProcessError) {
@@ -797,10 +873,14 @@ int main(int argc, char** argv) {
         running = proc;
         launchBtn->setEnabled(false);
         stopBtn->show();
+        logBtn->show();
         engineBadge->setText("Wine-FEX");
         setStatus(QString::fromStdString("已启动：" + mission->name));
     };
 
+    QObject::connect(logBtn, &QPushButton::clicked, [&]() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(LogFilePath()));
+    });
     QObject::connect(launchBtn, &QPushButton::clicked, [&]() { startStop(false); });
     QObject::connect(stopBtn, &QPushButton::clicked, [&]() { startStop(true); });
 
