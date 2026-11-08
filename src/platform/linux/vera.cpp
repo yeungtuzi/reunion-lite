@@ -108,10 +108,10 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
 
     // 1. spawn.ini / spawn-vera.ini.
     //    gamemd reads the ANSI codepage; VERA reads UTF-8 and (in our fork)
-    //    honours RA2_SPAWN_INI.  VERA's pacer treats GameSpeed as a delay
-    //    bucket where 1 is fastest and 6 slowest, the opposite of the gamemd
-    //    slider, so invert the launcher's 0..6 value for the engine.
-    const int veraSpeed = std::max(0, std::min(6, 6 - options.gameSpeed));
+    //    honours RA2_SPAWN_INI.  Our patched pacer maps the slider in the
+    //    retail direction (6 = uncapped, 5 = 60 Hz), so the launcher's 0..6
+    //    value is written through unchanged.
+    const int veraSpeed = std::max(0, std::min(6, options.gameSpeed));
     std::string veraIniText = plan.spawnIni;
     {
         const std::string needle = "GameSpeed=";

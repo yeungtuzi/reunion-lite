@@ -16,8 +16,9 @@ macOS 用 CrossOver，Linux 用 **Wine-FEX**（Proton + FEX-Emu）。
   （gamemd 读 ANSI 代码页，VERA 读 UTF-8）
 - 从 `Mod&AI/*/aimd.ini` 注入 AI 根到 `Run/aimd.ini`
 - 写出 `Run/config.toml`：`ra2_dir` 用正斜杠（反斜杠会被 TOML 当成非法转义）
-- 游戏速度映射：启动器 0..6 表示慢→快，VERA 的 pacer 是 1 最快、6 最慢，
-  所以写进 `spawn.ini` 的 `GameSpeed` 要取 `6 - speed`；`VERA.INI` 里保留原值
+- 游戏速度映射：启动器 0..6 表示慢→快；`yeungtuzi/vera20k` 的 `main` 已带
+  pacer 补丁（6 = 不限制、5 = 60 Hz），所以 `spawn.ini` 与 `VERA.INI` 都直接
+  写启动器的 0..6 值
 - 环境变量：`RA2_DIR`、`RA2_SPAWN_INI`、`VERA_TOLERANT_AI=1`、
   `VERA_FPS_CAP=60`、`VERA_FPS_CAP_IDLE=60`、`LANG=zh_CN.GBK`
 - `movies03.mix` 缺失时补一个合法的空 MIX（Reunion 的合并资源里不带基础版电影包）
