@@ -33,6 +33,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSettings>
+#include <QSpinBox>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QTableWidget>
@@ -595,6 +596,30 @@ int main(int argc, char** argv) {
         hint->setWordWrap(true);
         form->addRow(hint);
 
+        heading("高级");
+        auto* hideOnLaunch = new QCheckBox("启动游戏后隐藏启动器（省电）", &dlg);
+        hideOnLaunch->setChecked(settings.value("hideOnLaunch", false).toBool());
+        form->addRow(hideOnLaunch);
+        auto* speedControl = new QCheckBox("速度控制（gamemd -speedcontrol）", &dlg);
+        speedControl->setChecked(settings.value("speedControl", true).toBool());
+        form->addRow(speedControl);
+        auto* extraArgs = new QLineEdit(settings.value("extraArgs").toString(), &dlg);
+        extraArgs->setPlaceholderText("附加给 gamemd 的参数，例如 -LOG -CD");
+        form->addRow("附加启动参数", extraArgs);
+        auto* fpsCounter = new QCheckBox("性能指示（VERA20K 启动即显示 FPS 读数）", &dlg);
+        fpsCounter->setChecked(settings.value("fpsCounter", false).toBool());
+        form->addRow(fpsCounter);
+        auto* audioBuffer = new QSpinBox(&dlg);
+        audioBuffer->setRange(0, 4096);
+        audioBuffer->setSingleStep(256);
+        audioBuffer->setSpecialValueText("自动");
+        audioBuffer->setValue(settings.value("audioBuffer", 0).toInt());
+        audioBuffer->setToolTip("VERA20K 音频周期（帧）；0 = 引擎默认。加载任务时爆音可调到 2048。");
+        form->addRow("VERA20K 音频缓冲", audioBuffer);
+        auto* fpsHint = new QLabel("游戏内也可以按 Ctrl+Alt+F 切换。", &dlg);
+        fpsHint->setWordWrap(true);
+        form->addRow(fpsHint);
+
         heading("客户端默认值");
         auto* defaultsHint = new QLabel("从 Client/CampaignSetting.ini 读取难度、资金、速度等默认值。", &dlg);
         defaultsHint->setWordWrap(true);
@@ -627,6 +652,11 @@ int main(int argc, char** argv) {
         if (dlg.exec() == QDialog::Accepted) {
             settings.setValue("engine", engine->currentData().toString());
             settings.setValue("vera20kBin", veraPath->text().trimmed());
+            settings.setValue("hideOnLaunch", hideOnLaunch->isChecked());
+            settings.setValue("speedControl", speedControl->isChecked());
+            settings.setValue("extraArgs", extraArgs->text().trimmed());
+            settings.setValue("fpsCounter", fpsCounter->isChecked());
+            settings.setValue("audioBuffer", audioBuffer->value());
             engineBadge->setText(engineName());
             const QString newRoot = gameRootEdit->text().trimmed();
             if (!newRoot.isEmpty() && newRoot != QString::fromStdString(root)) {
@@ -692,6 +722,10 @@ int main(int argc, char** argv) {
             env.insert("VERA_FPS_CAP", "60");
             env.insert("VERA_FPS_CAP_IDLE", "60");
             env.insert("LANG", "zh_CN.GBK");
+            if (settings.value("fpsCounter", false).toBool())
+                env.insert("VERA_FPS_COUNTER", "1");
+            if (settings.value("audioBuffer", 0).toInt() > 0)
+                env.insert("VERA_AUDIO_BUFFER", QString::number(settings.value("audioBuffer").toInt()));
             proc->setProcessEnvironment(env);
             proc->setWorkingDirectory(runDir);
             proc->setProgram(bin);
@@ -702,12 +736,14 @@ int main(int argc, char** argv) {
             QObject::connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
                              [&, proc](int code, QProcess::ExitStatus) {
                 setStatus(QString("VERA20K 退出（%1）").arg(code));
+                win.show();
                 running = nullptr;
                 launchBtn->setEnabled(true);
                 stopBtn->hide();
                 proc->deleteLater();
             });
             proc->start();
+            if (settings.value("hideOnLaunch", false).toBool()) win.hide();
             if (!proc->waitForStarted(3000))
                 qWarning("vera start failed: %s", qPrintable(proc->errorString()));
             else
@@ -728,6 +764,11 @@ int main(int argc, char** argv) {
         if (plan.useAres) args << "gamemd.exe" << "-SPAWN";
         else args << "-SPAWN";
         if (!plan.extraArgs.empty()) args << QString::fromStdString(plan.extraArgs);
+        if (settings.value("speedControl", true).toBool() &&
+            !QString::fromStdString(plan.extraArgs).contains("-speedcontrol"))
+            args << "-speedcontrol";
+        const QString extra = settings.value("extraArgs").toString().trimmed();
+        if (!extra.isEmpty()) args << extra.split(' ', Qt::SkipEmptyParts);
 
         auto* proc = new QProcess(&win);
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -745,12 +786,14 @@ int main(int argc, char** argv) {
                          [&, proc](int code, QProcess::ExitStatus) {
             rlwin::SyncSettingsBack(root);
             setStatus(QString("游戏退出（%1）").arg(code));
+            win.show();
             running = nullptr;
             launchBtn->setEnabled(true);
             stopBtn->hide();
             proc->deleteLater();
         });
         proc->start();
+        if (settings.value("hideOnLaunch", false).toBool()) win.hide();
         running = proc;
         launchBtn->setEnabled(false);
         stopBtn->show();
