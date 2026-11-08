@@ -462,8 +462,12 @@ bool BuildLaunchPlan(const std::string& gameRootUtf8, const Mission& mission,
     }
     plan.missionDir = ResolveGamePath(gameRootUtf8, missionPath);
     if (!DirExists(plan.missionDir)) {
-        plan.error = "任务目录不存在：" + missionPath;
-        return false;
+        const std::string resolved = ResolvePathIgnoreCase(plan.missionDir);
+        if (resolved.empty()) {
+            plan.error = "任务目录不存在：" + missionPath;
+            return false;
+        }
+        plan.missionDir = resolved;
     }
     std::string actualScenario = FindFileIgnoreCase(plan.missionDir, mission.scenario);
     if (!actualScenario.empty()) {

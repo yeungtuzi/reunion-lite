@@ -13,6 +13,16 @@ namespace rl {
 // through the RL_DRIVE_MAP table.
 std::string MapPlatformPath(const std::string& utf8Path);
 
+// Resolves a relative path below root component by component, matching each
+// component case-insensitively when the exact name does not exist.  Returns an
+// empty string when the directory cannot be resolved.  Linux filesystems are
+// case-sensitive while the Reunion client was built on Windows.
+std::string ResolveDirIgnoreCase(const std::string& rootUtf8, const std::string& relUtf8);
+
+// Same as above but for an already absolute path (drive letters are mapped by
+// MapPlatformPath).  Returns an empty string when a component is missing.
+std::string ResolvePathIgnoreCase(const std::string& absUtf8);
+
 // Human readable drive map, e.g. "D=/Users/lf/Documents".
 std::string PlatformDriveMapSummary();
 

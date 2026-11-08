@@ -58,8 +58,16 @@ std::vector<std::pair<char, std::string>> LoadMappings() {
         bool hasD = false;
         for (const auto& item : mappings) hasD = hasD || item.first == 'D';
         if (!hasD) {
-            std::string fallback = HomeDir() + "/Documents";
-            if (IsDirectory(fallback + "/ra2master")) mappings.emplace_back('D', fallback);
+            // Locale-proof default: the Reunion client installed the packs
+            // under the user's Documents folder, which is ~/文档 on a Chinese
+            // desktop and ~/Documents elsewhere.
+            for (const std::string& candidate : {HomeDir() + "/Documents",
+                                                 HomeDir() + "/文档"}) {
+                if (IsDirectory(candidate + "/ra2master")) {
+                    mappings.emplace_back('D', candidate);
+                    break;
+                }
+            }
         }
     });
     return mappings;

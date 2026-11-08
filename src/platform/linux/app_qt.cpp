@@ -42,6 +42,7 @@
 #include <QWidget>
 
 #include <algorithm>
+#include <map>
 #include <cstdlib>
 #include <functional>
 #include <string>
@@ -519,6 +520,17 @@ int main(int argc, char** argv) {
 
     auto doScan = [&]() {
         g_campaign = rl::ScanCampaigns(root);
+        if (qEnvironmentVariableIsSet("REUNION_DUMP")) {
+            std::map<std::string, int> reasons;
+            for (const auto& m : g_campaign.missions)
+                if (!m.Launchable()) reasons[m.badReason.empty() ? "(empty scenario)" : m.badReason]++;
+            for (const auto& [reason, count] : reasons)
+                qWarning("SKIP %4d  %s", count, reason.c_str());
+            qWarning("total=%zu launchable=%zu", g_campaign.missions.size(),
+                     static_cast<size_t>(std::count_if(g_campaign.missions.begin(),
+                                                       g_campaign.missions.end(),
+                                                       [](const rl::Mission& m) { return m.Launchable(); })));
+        }
         g_mods = rl::LoadModRegistry(root);
         rl::LoadClientDefaults(root, g_options);
         stateToOptionWidgets();

@@ -318,7 +318,11 @@ std::string ValidateMission(const std::string& gameRootUtf8, const Mission& m) {
     fs::path root = Fs(gameRootUtf8);
     fs::path missionDir = root / Fs(m.path);
     std::error_code ec;
-    if (!fs::is_directory(missionDir, ec)) return "任务目录不存在：" + m.path;
+    if (!fs::is_directory(missionDir, ec)) {
+        const std::string resolved = ResolvePathIgnoreCase(U8(missionDir));
+        if (resolved.empty()) return "任务目录不存在：" + m.path;
+        missionDir = Fs(resolved);
+    }
     if (FindFileIgnoreCase(U8(missionDir), m.scenario).empty())
         return "场景文件不存在：" + m.scenario;
     return {};
@@ -450,6 +454,8 @@ Campaign ScanCampaigns(const std::string& gameRootUtf8) {
                 if (it == dirCache.end()) {
                     std::error_code ec;
                     exists = fs::is_directory(root / Fs(m.path), ec);
+                    if (!exists)
+                        exists = !ResolvePathIgnoreCase(U8(root / Fs(m.path))).empty();
                     dirCache.emplace(m.path, exists);
                 } else {
                     exists = it->second;
