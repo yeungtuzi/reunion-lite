@@ -138,7 +138,25 @@ install -Dm755 scripts/linux/ra2-launch.sh "$HOME/.local/share/m1000/work/ra2-la
 | 常驻内存 | ~20 MB |
 | 空闲 CPU | ~0% |
 
-## 构建
+## 构建（单一代码树，按平台自动匹配）
+
+同一个 checkout 在三个平台上各自构建，不需要切分支或手工挑源文件：
+
+| 平台 | 入口 | 产物 |
+|---|---|---|
+| Linux / 其它 Unix | `cmake -B build && cmake --build build` | `build/reunion-lite-qt`（Qt6） |
+| macOS | `swift build -c release` 或 `scripts/macos/build-app.sh` | `ReunionLite`（SwiftUI） |
+| Windows | `cmake -B build`（MinGW）或 `build.ps1` | `build/ReunionLite.exe`（Win32） |
+
+也可以只记一个命令：`./build.sh`（按 `uname` 分发到上面三条路径）。
+
+`CMakeLists.txt` 用 `WIN32` / `APPLE` / 其它三种情况自动选：
+共享核心 `src/core/*` + 对应 `src/platform/{win,mac,linux}` + 对应 UI。
+macOS 的 UI 是 SwiftUI（`Package.swift` 的 `ReunionCore` target 同样直接编译
+`src/core` + `src/platform/mac`），CMake 在 macOS 上构建共享核心静态库供
+CLI/测试使用。
+
+### Windows 细节
 
 需要 MinGW-w64（g++ / windres / strip），无第三方库。
 

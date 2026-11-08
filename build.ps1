@@ -27,6 +27,7 @@ $sources = @(
     'src\core\campaign.cpp',
     'src\core\fs_generic.cpp',
     'src\core\launch.cpp',
+    'src\core\client_defaults.cpp',
     'src\platform\win\encoding.cpp',
     'src\platform\win\path_map.cpp',
     'src\platform\win\fs_win.cpp',
