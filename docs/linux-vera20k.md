@@ -50,6 +50,12 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
   「设置 → 高级 → VERA20K 音频缓冲」设成 2048 后，一次完整运行 underrun 计数为 0。
 - 「性能指示」勾选后以 `VERA_FPS_COUNTER=1` 启动，进入游戏即显示 FPS/CPU 面板
   （等效 Ctrl+Alt+F）。
+- 性能结论（已结案）：MTGPU Vulkan 下瓶颈是**等显示器 vsync**，各阶段耗时之和
+  小于 16.6 ms（60 FPS 的帧预算），因此满足 60 FPS 要求；整段运行的平均值
+  （例如 25 s 内 1249 帧 = 49.9 FPS）还包含地图加载，不代表游戏内帧率。
+  测试补丁会在干净退出时写一行
+  `Performance summary: adapter=..., frames=..., seconds=..., avg_fps=...`
+  到 `Run/logs/ra2.log`。
 - 图形后端（设置 → 画面 → VERA20K 图形后端）：
   - `auto`（默认）：存在 `/etc/vulkan/icd.d/mtvk.json` 就用 MTGPU，否则 llvmpipe
   - `mtgpu`：强制 MTGPU Vulkan + X11
