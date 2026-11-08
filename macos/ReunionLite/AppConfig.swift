@@ -29,7 +29,6 @@ struct AppConfig: Codable {
     var hideOnLaunch: Bool = true
     var defaultsLoaded: Bool = false
     var favorites: [String]? = nil
-    var showBriefing: Bool? = nil
     var engine: String? = nil          // "crossover" (default) | "vera20k"
     var vera20kPath: String? = nil
     var trainerPath: String? = nil

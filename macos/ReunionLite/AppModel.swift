@@ -30,8 +30,6 @@ final class AppModel {
     var isScanning = false
     var isLaunching = false
     var showSettings = false
-    var briefingMission: MissionDTO?
-    private var skipBriefingOnce = false
     var lastError: String?
     var logPath: String?
     var warnings: [String] = []
@@ -258,11 +256,6 @@ final class AppModel {
 
     func launch() {
         guard let mission = selectedMission, !isLaunching, runningProcess == nil else { return }
-        if (config.showBriefing ?? true) && !skipBriefingOnce {
-            briefingMission = mission
-            return
-        }
-        skipBriefingOnce = false
         if config.resolvedEngine == "vera20k" {
             launchVera20k(mission)
             return
@@ -489,14 +482,6 @@ final class AppModel {
         var text = String(data: data, encoding: gb18030)
             ?? String(data: data, encoding: .utf8)
             ?? ""
-        // VERA's pacer treats GameSpeed as a delay bucket: 1 is fastest,
-        // 6 is slowest (opposite of the gamemd slider). The launcher's
-        // 0..6 value is slow-to-fast, so invert it for this engine.
-        let inverted = max(0, min(6, 6 - (config.options.speed)))
-        text = text.replacingOccurrences(of: "GameSpeed=", with: "GameSpeed=__VERA__")
-        text = text.replacingOccurrences(of: "GameSpeed=__VERA__\(config.options.speed)",
-                                         with: "GameSpeed=\(inverted)")
-        text = text.replacingOccurrences(of: "GameSpeed=__VERA__", with: "GameSpeed=")
         try text.write(toFile: runDir + "/spawn-vera.ini", atomically: true, encoding: .utf8)
     }
 
@@ -515,7 +500,7 @@ final class AppModel {
                 continue
             }
             if section == "Options" && line.hasPrefix("GameSpeed=") {
-                lines[index] = "GameSpeed=\(max(0, min(6, 6 - speed)))"
+                lines[index] = "GameSpeed=\(speed)"
             }
         }
         text = lines.joined(separator: "\n")
@@ -552,16 +537,6 @@ final class AppModel {
             let client = CoreClient(root: root)
             client?.sync()
         }
-    }
-
-    func confirmBriefing() {
-        briefingMission = nil
-        skipBriefingOnce = true
-        launch()
-    }
-
-    func cancelBriefing() {
-        briefingMission = nil
     }
 
     func stopGame() {
