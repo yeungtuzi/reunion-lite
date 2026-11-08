@@ -4,7 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VERA_SRC="${VERA20K_SRC:-$HOME/vscode/vera20k}"
-VERSION="0.5"
+VERSION="$(tr -d "\r\n" < "$ROOT/VERSION")"
 DIST="$ROOT/dist"
 STAGE="$ROOT/build/macos/dmg"
 COMMIT="$(git -C "$VERA_SRC" rev-parse --short=10 HEAD)"

@@ -1,0 +1,129 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VERA20K_REPO: https://github.com/yeungtuzi/vera20k.git
+  VERA20K_REF: main
+
+jobs:
+  linux:
+    name: linux-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04,     arch: x86_64 }
+          - { runner: ubuntu-24.04-arm, arch: aarch64 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        run: echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ qt6-base-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build launcher
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+      - name: Build VERA20K
+        run: |
+          git clone --depth=1 --branch "$VERA20K_REF" "$VERA20K_REPO" "$RUNNER_TEMP/vera20k"
+          cargo build --release --manifest-path "$RUNNER_TEMP/vera20k/Cargo.toml" --bin vera20k
+      - name: Package
+        run: |
+          STAGE="dist/reunion-lite-$VERSION-linux-${{ matrix.arch }}"
+          mkdir -p "$STAGE/scripts/linux"
+          cp build/reunion-lite-qt "$STAGE/ReunionLite"
+          cp "$RUNNER_TEMP/vera20k/target/release/vera20k" "$STAGE/vera20k"
+          cp README.md VERSION "$STAGE/"
+          cp scripts/linux/*.sh "$STAGE/scripts/linux/" 2>/dev/null || true
+          tar -C dist -czf "dist/reunion-lite-$VERSION-linux-${{ matrix.arch }}.tar.gz" \
+            "reunion-lite-$VERSION-linux-${{ matrix.arch }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/*.tar.gz
+
+  windows:
+    name: windows-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        shell: bash
+        run: echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+      - name: Build
+        shell: powershell
+        run: |
+          $env:Path = "C:\msys64\mingw64\bin;" + $env:Path
+          ./build.ps1 -OutDir build
+      - name: Package
+        shell: bash
+        run: |
+          STAGE="dist/reunion-lite-$VERSION-windows-x86_64"
+          mkdir -p "$STAGE"
+          cp build/ReunionLite.exe "$STAGE/"
+          cp README.md VERSION "$STAGE/"
+          (cd dist && 7z a "reunion-lite-$VERSION-windows-x86_64.zip" "reunion-lite-$VERSION-windows-x86_64")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: dist/*.zip
+
+  macos:
+    name: macos-arm64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build VERA20K
+        run: |
+          git clone --depth=1 --branch "$VERA20K_REF" "$VERA20K_REPO" "$RUNNER_TEMP/vera20k"
+          VERA20K_SRC="$RUNNER_TEMP/vera20k" ./scripts/macos/package-dmg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: |
+            dist/*.dmg
+            dist/*-source.tar.gz
+            dist/SHA256SUMS.txt
+
+  release:
+    name: publish
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        run: echo "VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd dist
+          for f in *; do
+            case "$f" in SHA256SUMS.txt) continue;; esac
+            sha256sum "$f" >> SHA256SUMS.txt
+          done
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Reunion Lite ${{ env.VERSION }}
+          generate_release_notes: true
+          files: dist/*

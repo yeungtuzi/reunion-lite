@@ -5,6 +5,7 @@
 # falling back to an ad-hoc signature.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+VERSION="$(tr -d "\r\n" < "$ROOT/VERSION")"
 GAME="${REUNION_GAME_ROOT:-$HOME/Documents/ra2reunion}"
 APP="$ROOT/build/macos/ReunionLite.app"
 
@@ -22,7 +23,7 @@ if [ -f "$GAME/Resources/clienticon.ico" ] && python3 -c "import PIL" >/dev/null
     iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns" || true
 fi
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -32,8 +33,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.yeungtuzi.reunionlite.macos</string>
     <key>CFBundleExecutable</key><string>ReunionLite</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.5</string>
-    <key>CFBundleVersion</key><string>5</string>
+    <key>CFBundleShortVersionString</key><string>${VERSION}</string>
+    <key>CFBundleVersion</key><string>${VERSION}</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.strategy-games</string>
