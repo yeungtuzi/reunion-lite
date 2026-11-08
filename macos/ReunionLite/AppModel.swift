@@ -30,6 +30,8 @@ final class AppModel {
     var isScanning = false
     var isLaunching = false
     var showSettings = false
+    var briefingMission: MissionDTO?
+    private var skipBriefingOnce = false
     var lastError: String?
     var logPath: String?
     var warnings: [String] = []
@@ -256,6 +258,15 @@ final class AppModel {
 
     func launch() {
         guard let mission = selectedMission, !isLaunching, runningProcess == nil else { return }
+        if (config.showBriefing ?? true) && !skipBriefingOnce {
+            briefingMission = mission
+            return
+        }
+        skipBriefingOnce = false
+        if config.resolvedEngine == "vera20k" {
+            launchVera20k(mission)
+            return
+        }
         let configSnapshot = config
         let missionOrdinal = mission.ordinal
         isLaunching = true
@@ -336,17 +347,193 @@ final class AppModel {
         }
     }
 
+    // MARK: - VERA20K (experimental engine)
+
+    private func launchVera20k(_ mission: MissionDTO) {
+        let snapshot = config
+        let ordinal = mission.ordinal
+        isLaunching = true
+        lastError = nil
+        warnings = []
+        status = "准备 VERA20K…"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let client = CoreClient(root: snapshot.gameRoot)
+            let result = client?.prepare(missionIndex: ordinal, options: snapshot.options,
+                                         width: snapshot.width, height: snapshot.height,
+                                         renderer: snapshot.renderer)
+            DispatchQueue.main.async {
+                guard let result, result.ok, let runDir = result.runDir,
+                      let scenario = result.scenario, let gameRoot = result.gameRoot else {
+                    self.isLaunching = false
+                    self.status = "VERA20K 准备失败"
+                    let detail = "ok=\(result?.ok ?? false) err=\(result?.error ?? "nil") run=\(result?.runDir ?? "nil") scenario=\(result?.scenario ?? "nil") root=\(result?.gameRoot ?? "nil")"
+                    try? detail.write(toFile: "/tmp/rl-vera-fail.txt", atomically: true, encoding: .utf8)
+                    self.lastError = result?.error ?? "无法准备 Run"
+                    return
+                }
+                self.warnings = result.plan?.warnings ?? []
+                self.startVera20k(runDir: runDir, scenario: scenario, gameRoot: gameRoot,
+                                  mission: mission, config: snapshot)
+            }
+        }
+    }
+
+    private func startVera20k(runDir: String, scenario: String, gameRoot: String,
+                              mission: MissionDTO, config snapshot: AppConfig) {
+        let executable = snapshot.resolvedVera20kPath
+        guard FileManager.default.fileExists(atPath: executable) else {
+            isLaunching = false
+            status = "找不到 VERA20K"
+            lastError = "找不到 VERA20K 可执行文件：\(executable)\n请在设置里指定路径。"
+            return
+        }
+        do {
+            try installAiRoot(gameRoot: gameRoot, runDir: runDir, scenario: scenario)
+            try writeVeraConfig(runDir: runDir)
+            applyVeraGameSpeed(snapshot.options.speed)
+        } catch {
+            isLaunching = false
+            status = "VERA20K 准备失败"
+            lastError = error.localizedDescription
+            return
+        }
+
+        let logDir = NSHomeDirectory() + "/Library/Logs/ReunionLite"
+        try? FileManager.default.createDirectory(atPath: logDir, withIntermediateDirectories: true)
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let logPath = "\(logDir)/vera-\(stamp).log"
+        self.logPath = logPath
+        FileManager.default.createFile(atPath: logPath, contents: nil)
+        let handle = try? FileHandle(forWritingTo: URL(fileURLWithPath: logPath))
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = ["-SPAWN"]
+        process.currentDirectoryURL = URL(fileURLWithPath: runDir)
+        var environment = ProcessInfo.processInfo.environment
+        environment["RA2_DIR"] = runDir
+        environment["RA2_SPAWN_INI"] = runDir + "/spawn.ini"
+        environment["VERA_TOLERANT_AI"] = "1"
+        environment["LANG"] = "zh_CN.GBK"
+        process.environment = environment
+        process.standardOutput = handle ?? FileHandle.nullDevice
+        process.standardError = handle ?? FileHandle.nullDevice
+        process.terminationHandler = { [weak self] finished in
+            DispatchQueue.main.async {
+                self?.runningProcess = nil
+                self?.isLaunching = false
+                self?.status = finished.terminationStatus == 0
+                    ? "VERA20K 已退出" : "VERA20K 退出（代码 \(finished.terminationStatus)）"
+                NSApp.unhide(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+        do {
+            try process.run()
+            runningProcess = process
+            lastLaunchDate = Date()
+            config.lastMissionUID = mission.uid
+            config.lastMission = mission.index
+            status = "VERA20K 运行中：\(mission.name)"
+            if config.hideOnLaunch { NSApp.hide(nil) }
+        } catch {
+            isLaunching = false
+            status = "VERA20K 启动失败"
+            lastError = "无法启动 VERA20K：\(error.localizedDescription)"
+        }
+    }
+
+    private func installAiRoot(gameRoot: String, runDir: String, scenario: String) throws {
+        let aiDir = gameRoot + "/Mod&AI"
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: aiDir) else {
+            throw NSError(domain: "ReunionLite", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "找不到 Mod&AI 目录，无法选择 AI 根"
+            ])
+        }
+        var fallback: String?
+        for name in entries {
+            let dir = aiDir + "/" + name
+            let aimd = dir + "/aimd.ini"
+            guard FileManager.default.fileExists(atPath: aimd) else { continue }
+            if fallback == nil { fallback = aimd }
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
+            if files.contains(where: { $0.caseInsensitiveCompare(scenario) == .orderedSame }) {
+                try? FileManager.default.removeItem(atPath: runDir + "/aimd.ini")
+                try FileManager.default.copyItem(atPath: aimd, toPath: runDir + "/aimd.ini")
+                return
+            }
+        }
+        guard let fallback else {
+            throw NSError(domain: "ReunionLite", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "找不到可用的 aimd.ini（Mod&AI 里没有 AI 包），VERA20K 无法载入任务"
+            ])
+        }
+        try? FileManager.default.removeItem(atPath: runDir + "/aimd.ini")
+        try FileManager.default.copyItem(atPath: fallback, toPath: runDir + "/aimd.ini")
+    }
+
+    /// VERA reads its campaign pace from VERA.INI's [Options] GameSpeed (the
+    /// spawn.ini value alone is not enough for the campaign screen), so mirror
+    /// the launcher's chosen speed into the engine profile before starting.
+    private func applyVeraGameSpeed(_ speed: Int) {
+        let path = NSHomeDirectory() + "/Library/Application Support/VERA20k/VERA.INI"
+        guard var text = try? String(contentsOfFile: path, encoding: .utf8) else { return }
+        var lines = text.components(separatedBy: "\n")
+        var section = ""
+        for index in lines.indices {
+            let line = lines[index].trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("[") && line.hasSuffix("]") {
+                section = String(line.dropFirst().dropLast())
+                continue
+            }
+            if section == "Options" && line.hasPrefix("GameSpeed=") {
+                lines[index] = "GameSpeed=\(speed)"
+            }
+        }
+        text = lines.joined(separator: "\n")
+        try? text.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    private func writeVeraConfig(runDir: String) throws {
+        let settings = AppConfig.supportDirectory.appendingPathComponent("vera20k-settings").path
+        try? FileManager.default.createDirectory(atPath: settings, withIntermediateDirectories: true)
+        let text = """
+        [paths]
+        ra2_dir = "\(runDir)"
+        settings_dir = "\(settings)"
+
+        [ini]
+        profile = "yr"
+
+        [gameplay]
+        input_delay_ticks = 15
+        pause_on_focus_loss = false
+        """
+        try text.write(toFile: runDir + "/config.toml", atomically: true, encoding: .utf8)
+    }
+
     private func finishLaunch(exitCode: Int32, logPath: String) {
         runningProcess = nil
         isLaunching = false
         status = exitCode == 0 ? "游戏已退出" : "游戏退出（代码 \(exitCode)）"
         NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
+        guard config.resolvedEngine != "vera20k" else { return }
         let root = config.gameRoot
         DispatchQueue.global(qos: .utility).async {
             let client = CoreClient(root: root)
             client?.sync()
         }
+    }
+
+    func confirmBriefing() {
+        briefingMission = nil
+        skipBriefingOnce = true
+        launch()
+    }
+
+    func cancelBriefing() {
+        briefingMission = nil
     }
 
     func stopGame() {
@@ -447,6 +634,19 @@ final class AppModel {
         panel.message = "选择修改器（红色警戒2修改大师.exe）"
         if panel.runModal() == .OK, let url = panel.url {
             config.trainerPath = url.path
+        }
+    }
+
+    func chooseVera20kBinary() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: (config.resolvedVera20kPath as NSString).deletingLastPathComponent)
+        panel.prompt = "选择"
+        panel.message = "选择 VERA20K 可执行文件"
+        if panel.runModal() == .OK, let url = panel.url {
+            config.vera20kPath = url.path
         }
     }
 

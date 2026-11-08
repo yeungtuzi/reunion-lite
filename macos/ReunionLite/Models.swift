@@ -86,6 +86,16 @@ struct LaunchResult: Codable {
     let env: [String: String]?
 }
 
+struct PrepareResult: Codable {
+    let ok: Bool
+    let error: String?
+    let runDir: String?
+    let scenario: String?
+    let gameRoot: String?
+    let mission: MissionDTO?
+    let plan: PlanInfo?
+}
+
 struct ClientDefaultsResult: Codable {
     struct Options: Codable {
         let difficulty: Int

@@ -212,6 +212,73 @@ char* rl_drives_json(void) {
     return CopyOut(out);
 }
 
+
+char* rl_prepare_json(rl_context* ctx, int mission_ordinal, const rl_options* options,
+                      const rl_video* video) {
+    if (!ctx) return CopyOut("{\"ok\":false,\"error\":\"no context\"}");
+    EnsureLoaded(ctx, false);
+    const rl::Mission* mission = nullptr;
+    if (mission_ordinal >= 0 &&
+        static_cast<std::size_t>(mission_ordinal) < ctx->campaign.missions.size()) {
+        mission = &ctx->campaign.missions[static_cast<std::size_t>(mission_ordinal)];
+    }
+    if (!mission) return CopyOut("{\"ok\":false,\"error\":\"mission not found\"}");
+
+    rl::LaunchOptions launchOptions;
+    if (options) {
+        if (options->mod_id && *options->mod_id) launchOptions.modId = options->mod_id;
+        launchOptions.difficulty = options->difficulty;
+        launchOptions.credits = options->credits;
+        launchOptions.gameSpeed = options->game_speed;
+        launchOptions.autosave = options->autosave;
+        launchOptions.musicVolume = options->music_volume;
+        launchOptions.playMovies = options->play_movies != 0;
+        launchOptions.satellite = options->satellite != 0;
+        launchOptions.ares = options->ares != 0;
+        launchOptions.phobos = options->phobos != 0;
+        launchOptions.terrain = options->terrain != 0;
+        launchOptions.autoRepair = options->auto_repair != 0;
+        launchOptions.corr = options->corr != 0;
+        launchOptions.reverse = options->reverse != 0;
+    }
+    rlmac::VideoConfig videoConfig;
+    if (video) {
+        if (video->width >= 640) videoConfig.width = video->width;
+        if (video->height >= 480) videoConfig.height = video->height;
+        if (video->renderer && *video->renderer) videoConfig.renderer = video->renderer;
+    }
+    rl::LaunchPlan plan;
+    if (!rl::BuildLaunchPlan(ctx->root, *mission, launchOptions, plan,
+                             &ctx->campaign.missions)) {
+        return CopyOut("{\"ok\":false,\"error\":" + Str(plan.error) + "}");
+    }
+    std::string error;
+    std::vector<std::string> warnings;
+    if (!rlmac::PrepareRun(plan, launchOptions, error, warnings, videoConfig)) {
+        return CopyOut("{\"ok\":false,\"error\":" + Str(error) + "}");
+    }
+    std::string out = "{\"ok\":true,\"error\":\"\"";
+    out += ",\"runDir\":" + Str(rl::MapPlatformPath(plan.runDir));
+    out += ",\"scenario\":" + Str(plan.scenarioName);
+    out += ",\"gameRoot\":" + Str(ctx->root);
+    out += ",\"mission\":" + MissionJson(*mission, ctx->mods,
+        static_cast<int>(mission - ctx->campaign.missions.data()));
+    out += ",\"plan\":{\"modId\":" + Str(plan.modId);
+    out += ",\"modName\":" + Str(plan.modName);
+    out += ",\"scenario\":" + Str(plan.scenarioName);
+    out += ",\"runDir\":" + Str(rl::MapPlatformPath(plan.runDir));
+    out += ",\"ares\":" + Bool(plan.useAres);
+    out += ",\"phobos\":" + Bool(plan.usePhobos);
+    out += ",\"tx\":" + Bool(plan.useTx);
+    out += ",\"warnings\":[";
+    for (std::size_t i = 0; i < warnings.size(); ++i) {
+        if (i) out += ",";
+        out += Str(warnings[i]);
+    }
+    out += "]}}";
+    return CopyOut(out);
+}
+
 char* rl_launch_json(rl_context* ctx, int mission_index, const rl_options* options,
                      const rl_video* video, const rl_wine* wine) {
     if (!ctx) return CopyOut("{\"ok\":false,\"error\":\"no context\"}");
@@ -286,7 +353,7 @@ char* rl_launch_json(rl_context* ctx, int mission_index, const rl_options* optio
     out += ",\"plan\":{\"modId\":" + Str(plan.modId);
     out += ",\"modName\":" + Str(plan.modName);
     out += ",\"scenario\":" + Str(plan.scenarioName);
-    out += ",\"runDir\":" + Str(plan.runDir);
+    out += ",\"runDir\":" + Str(rl::MapPlatformPath(plan.runDir));
     out += ",\"ares\":" + Bool(plan.useAres);
     out += ",\"phobos\":" + Bool(plan.usePhobos);
     out += ",\"tx\":" + Bool(plan.useTx);

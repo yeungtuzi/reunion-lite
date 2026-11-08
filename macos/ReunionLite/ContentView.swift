@@ -24,6 +24,10 @@ struct ContentView: View {
         .sheet(isPresented: $model.showSettings) {
             SettingsView().environment(model)
         }
+        .sheet(item: $model.briefingMission) { mission in
+            BriefingView(mission: mission)
+                .environment(model)
+        }
         .alert("出错了", isPresented: Binding(
             get: { model.lastError != nil },
             set: { if !$0 { model.lastError = nil } }
@@ -484,11 +488,56 @@ private struct StatusBar: View {
             Text("\(model.filteredMissions.count) / \(model.missions.count) 个任务")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+            Text(model.config.resolvedEngine == "vera20k" ? "VERA20K" : "CrossOver")
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .background(Capsule().fill(Color.secondary.opacity(0.15)))
             Text(model.config.resolutionLabel)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+}
+
+
+private struct BriefingView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let mission: MissionDTO
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(mission.name).font(.title2).bold()
+                Spacer()
+                Button("取消") { dismiss(); model.cancelBriefing() }
+                    .keyboardShortcut(.cancelAction)
+            }
+            Text("\(mission.pack) · \(mission.side) · \(mission.difficulty)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Divider()
+            ScrollView {
+                Text(mission.shortDescription.isEmpty ? "（该任务没有简报文本）" : mission.shortDescription)
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Divider()
+            HStack {
+                Spacer()
+                Button("开始任务") {
+                    dismiss()
+                    model.confirmBriefing()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 620, height: 460)
     }
 }

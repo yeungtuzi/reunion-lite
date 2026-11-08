@@ -36,6 +36,31 @@ struct SettingsView: View {
                     TextField("Bottle 名称", text: $model.config.bottle)
                 }
 
+                Section("引擎") {
+                    Picker("游戏引擎", selection: Binding(
+                        get: { model.config.resolvedEngine },
+                        set: { model.config.engine = $0 }
+                    )) {
+                        Text("CrossOver（原版 gamemd）").tag("crossover")
+                        Text("VERA20K（实验）").tag("vera20k")
+                    }
+                    if model.config.resolvedEngine == "vera20k" {
+                        LabeledContent("VERA20K 可执行文件") {
+                            HStack {
+                                TextField("", text: Binding(
+                                    get: { model.config.resolvedVera20kPath },
+                                    set: { model.config.vera20kPath = $0 }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                                Button("选择…") { model.chooseVera20kBinary() }
+                            }
+                        }
+                        Text("实验引擎：不需要 CrossOver/Rosetta，也不会启动修改器；使用 Run/ 作为 ra2_dir，并自动挂载 Mod&AI 里的 AI 根。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section("画面") {
                     Picker("窗口分辨率", selection: resolutionBinding) {
                         ForEach(resolutions, id: \.self) { value in

@@ -29,6 +29,9 @@ struct AppConfig: Codable {
     var hideOnLaunch: Bool = true
     var defaultsLoaded: Bool = false
     var favorites: [String]? = nil
+    var showBriefing: Bool? = nil
+    var engine: String? = nil          // "crossover" (default) | "vera20k"
+    var vera20kPath: String? = nil
     var trainerPath: String? = nil
     var autoStartTrainer: Bool? = nil
 
@@ -60,6 +63,23 @@ struct AppConfig: Codable {
     }
 
     var resolutionLabel: String { "\(width) × \(height)" }
+
+    var resolvedEngine: String { engine ?? "crossover" }
+
+    var resolvedVera20kPath: String {
+        if let vera20kPath, !vera20kPath.isEmpty { return vera20kPath }
+        // A bundled copy next to ReunionLite.app wins, then the dev build and
+        // the installed trainer build.
+        let sibling = Bundle.main.bundleURL.deletingLastPathComponent()
+            .appendingPathComponent("VERA20K.app/Contents/MacOS/VERA20K").path
+        let candidates = [
+            sibling,
+            NSHomeDirectory() + "/vscode/vera20k/target/release/vera20k",
+            "/Applications/VERA20K-trainer.app/Contents/MacOS/VERA20K-trainer",
+            "/Applications/VERA20K.app/Contents/MacOS/VERA20K",
+        ]
+        return candidates.first { FileManager.default.fileExists(atPath: $0) } ?? candidates[0]
+    }
 
     var resolvedTrainerPath: String {
         trainerPath ?? (NSHomeDirectory() + "/Documents/ra2master/红色警戒2修改大师.exe")

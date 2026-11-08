@@ -49,6 +49,8 @@ char* rl_scan_json(rl_context* ctx, int force_rescan);
 unsigned char* rl_scan_binary(rl_context* ctx, int force_rescan, unsigned long* out_size);
 char* rl_client_defaults_json(const char* game_root_utf8);
 char* rl_drives_json(void);
+char* rl_prepare_json(rl_context* ctx, int mission_ordinal, const rl_options* options,
+                      const rl_video* video);
 char* rl_launch_json(rl_context* ctx, int mission_ordinal, const rl_options* options,
                      const rl_video* video, const rl_wine* wine);
 char* rl_sync_json(rl_context* ctx);
