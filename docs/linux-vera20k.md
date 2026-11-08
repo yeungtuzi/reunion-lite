@@ -71,6 +71,11 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
   `khronos-egl` panic；而 llvmpipe 的 GL 又缺
   `TextureUsages(COPY_SRC | COPY_DST)`，VERA 会拒绝初始化。
 
+## 已知问题（0.5）
+
+- 部分第三方 MOD 单位渲染异常：林德拉克计划的机甲、命运之瞳等；其余任务包基本正常。
+- VERA20K 必须使用带补丁的构建（见上），上游原版会在 AIMD 未知成员处直接拒绝加载地图。
+
 ## 已验证
 
 aibook（Ubuntu 24.04 arm64 + M1000）上：

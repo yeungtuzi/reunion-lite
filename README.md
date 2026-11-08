@@ -2,7 +2,7 @@
 
 轻量、离线、零第三方依赖的《红色警戒2 重聚未来》战役启动器。
 
-> 版本 0.3 · Windows x64 · Linux arm64 · macOS 27（Apple Silicon） · Apache-2.0
+> 版本 0.5 · Windows x64 · Linux arm64 · macOS 27（Apple Silicon） · Apache-2.0
 
 ![Reunion Lite 界面](docs/screenshot.png)
 
@@ -15,6 +15,32 @@
 > **0.3 起新增 macOS 27（Apple Silicon）支持：原生 SwiftUI 启动器，CrossOver 26 作为后端，
 > 使用原版 `gamemd.exe` 引擎（经 `gamemd-spawn.exe -SPAWN` 启动），不是重写引擎。**
 > 详见 [macOS 指南](docs/MACOS.md)。
+>
+> **0.5（实验性）：Linux aarch64 / MTGPU 可以调用 VERA20K 原生引擎**（需要给 VERA20K
+> 打补丁）；界面重排为与 macOS 0.4 一致的布局。除部分第三方 MOD 单位
+> （如林德拉克计划的机甲、命运之瞳）存在渲染问题外，各种任务包基本正常。
+> 详见 [Linux / VERA20K 说明](docs/linux-vera20k.md)。
+
+## 0.5 更新（实验性：Linux aarch64 / MTGPU + VERA20K）
+
+- **Linux 启动器对齐 macOS 0.4 布局**：顶栏（游戏目录/搜索/重新扫描/设置）、任务包侧栏、
+  六列任务表、右侧检查器 + 游戏选项面板（模组/难度/初始资金/游戏速度/自动存档/游戏音乐/
+  简报过场/透明迷雾/地形扩展/自动维修/数值修复/军备反转/Ares/Phobos）、状态栏。
+- **两个引擎可选**：
+  - `Wine-FEX`（默认）：Steam Linux Runtime → FEX → 原版 `gamemd-spawn.exe`
+  - `VERA20K`（实验性）：原生 aarch64 引擎，直接读 `Run/`，不需要 Wine/Proton
+- **VERA20K 适配**（启动器自动处理）：UTF-8 `spawn.ini` / `spawn-vera.ini` + `RA2_SPAWN_INI`、
+  AI 根注入、`config.toml`、`movies03.mix` 兜底、游戏速度 6−speed 反转、
+  `VERA_TOLERANT_AI`、`VERA_FPS_COUNTER`、`VERA_AUDIO_BUFFER`
+- **VERA20K 需要打补丁**（本仓库不包含引擎源码）：`yeungtuzi/vera20k` 的 `main`
+  已含 4 个可移植补丁（容忍 AIMD 未知成员、性能读数、音频缓冲、退出 FPS 摘要）
+- **MTGPU Vulkan**：走 `/etc/vulkan/icd.d/mtvk.json`（M1000，Vulkan 1.3.290）+ X11 窗口；
+  Wayland 下该驱动不支持 surface 会自动退回 llvmpipe
+- **画面 / 日志**：分辨率与 cnc-ddraw 渲染器写入 `Run/RA2MD.ini`、`Run/ddraw.ini`；
+  启动日志在 `~/.local/share/reunion-lite/last-launch.log`
+- **性能**：MTGPU 下是等显示器 vsync，各阶段耗时之和小于 16.6 ms，满足 60 FPS
+- **已知问题**：部分第三方 MOD 单位渲染异常（林德拉克计划的机甲、命运之瞳等）；
+  其余任务包基本正常。任务识别 3389/3390（唯一缺失项是确实不存在的一个 `Mod&AI` 目录）。
 
 ## 这是什么
 
