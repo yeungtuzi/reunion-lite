@@ -10,11 +10,22 @@ GAME="${REUNION_GAME_ROOT:-$HOME/Documents/ra2reunion}"
 APP="$ROOT/build/macos/ReunionLite.app"
 
 cd "$ROOT"
-swift build -c release --product ReunionLite
+SWIFT_RELEASE_DIR="$ROOT/.build/release"
+if [ -n "${SWIFT_ARCH:-}" ]; then
+    swift build -c release --arch "$SWIFT_ARCH" --product ReunionLite
+    SWIFT_RELEASE_DIR="$ROOT/.build/${SWIFT_ARCH}-apple-macosx/release"
+else
+    swift build -c release --product ReunionLite
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$ROOT/.build/release/ReunionLite" "$APP/Contents/MacOS/ReunionLite"
+if [ -f "$SWIFT_RELEASE_DIR/ReunionLite" ]; then
+    SWIFT_BIN="$SWIFT_RELEASE_DIR/ReunionLite"
+else
+    SWIFT_BIN="$ROOT/.build/release/ReunionLite"
+fi
+cp "$SWIFT_BIN" "$APP/Contents/MacOS/ReunionLite"
 
 if [ -f "$GAME/Resources/clienticon.ico" ] && python3 -c "import PIL" >/dev/null 2>&1; then
     ICONSET="$ROOT/build/macos/AppIcon.iconset"

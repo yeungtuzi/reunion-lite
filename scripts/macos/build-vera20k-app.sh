@@ -10,14 +10,22 @@ APP="$ROOT/build/macos/VERA20K.app"
 VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$SRC/Cargo.toml" | head -1)"
 [ -n "$VERSION" ] || VERSION="0.0.0"
 
+VERA_BIN="$SRC/target/release/vera20k"
 (
     cd "$SRC"
-    cargo build --release --bin vera20k
+    if [ -n "${VERA20K_TARGET:-}" ]; then
+        cargo build --release --target "$VERA20K_TARGET" --bin vera20k
+    else
+        cargo build --release --bin vera20k
+    fi
 )
+if [ -n "${VERA20K_TARGET:-}" ]; then
+    VERA_BIN="$SRC/target/$VERA20K_TARGET/release/vera20k"
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$SRC/target/release/vera20k" "$APP/Contents/MacOS/VERA20K"
+cp "$VERA_BIN" "$APP/Contents/MacOS/VERA20K"
 
 cp "$SRC/LICENSE-GPL" "$APP/Contents/Resources/LICENSE-GPL" 2>/dev/null || true
 for extra in LGPL-2.1-or-later.txt THIRD_PARTY_LICENSES.html README.txt; do
