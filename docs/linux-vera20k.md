@@ -50,8 +50,20 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
   「设置 → 高级 → VERA20K 音频缓冲」设成 2048 后，一次完整运行 underrun 计数为 0。
 - 「性能指示」勾选后以 `VERA_FPS_COUNTER=1` 启动，进入游戏即显示 FPS/CPU 面板
   （等效 Ctrl+Alt+F）。
-- 注意：aibook 的 MTGPU 目前没有 Vulkan ICD，wgpu 会退回 **llvmpipe 软件渲染**，
-  1280×720 下约 20 FPS。这是驱动能力问题，不是启动器配置问题。
+- 图形后端（设置 → 画面 → VERA20K 图形后端）：
+  - `auto`（默认）：存在 `/etc/vulkan/icd.d/mtvk.json` 就用 MTGPU，否则 llvmpipe
+  - `mtgpu`：强制 MTGPU Vulkan + X11
+  - `software`：llvmpipe（Wayland）
+- aibook 的 MTGPU 是有 Vulkan 的：ICD 在 **`/etc/vulkan/icd.d/mtvk.json`**
+  （`libmtvk.so`，Vulkan 1.3.290，device `M1000`），不在 `/usr/share/vulkan/icd.d`。
+  但它的 surface 只支持 X11：在 Wayland 下 wgpu 报
+  `vulkan not compatible with provided surface`，然后退回 llvmpipe。
+  所以用 MTGPU 时启动器会显式设 `VK_ICD_FILENAMES`、`WGPU_BACKEND=vulkan`，
+  并去掉 `WAYLAND_DISPLAY` 走 XWayland（`DISPLAY=:0` + 自动找 `XAUTHORITY`）。
+  实测 `ra2.log`：`Using GPU adapter: M1000 (Vulkan)`，游戏内性能面板从 ~20 FPS 提到 ~60。
+- GL 路径目前不可用：MTGPU 的 EGL（`libEGL_mtgpu.so`）在 wgpu 的 GL 后端会
+  `khronos-egl` panic；而 llvmpipe 的 GL 又缺
+  `TextureUsages(COPY_SRC | COPY_DST)`，VERA 会拒绝初始化。
 
 ## 已验证
 
