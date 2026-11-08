@@ -44,6 +44,16 @@ struct ReunionLiteApp: App {
                     .disabled(model.selectedMission == nil || model.isLaunching)
                 Button("重新扫描") { model.rescan(force: true) }
                     .keyboardShortcut("r", modifiers: [.command])
+                Button("只显示收藏") {
+                    model.showFavoritesOnly.toggle()
+                    if model.showFavoritesOnly { model.packFilter = nil }
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                Button("显示全部任务") {
+                    model.showFavoritesOnly = false
+                    model.packFilter = nil
+                }
+                .keyboardShortcut("0", modifiers: [.command])
                 Divider()
                 Button("设置…") { model.showSettings = true }
                     .keyboardShortcut(",", modifiers: [.command])

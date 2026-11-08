@@ -90,13 +90,22 @@ private struct PackSidebar: View {
 
     var body: some View {
         List {
-            row(title: "全部任务包", count: model.launchableCount, selected: model.packFilter == nil) {
+            row(title: "收藏", count: model.favoriteCount,
+                selected: model.showFavoritesOnly, icon: "star.fill", tint: .orange) {
+                model.showFavoritesOnly = true
+                model.packFilter = nil
+            }
+            row(title: "全部任务包", count: model.launchableCount,
+                selected: !model.showFavoritesOnly && model.packFilter == nil) {
+                model.showFavoritesOnly = false
                 model.packFilter = nil
             }
             ForEach(model.packs) { pack in
                 let count = model.packCounts[pack.name] ?? 0
                 if count > 0 {
-                    row(title: pack.name, count: count, selected: model.packFilter == pack.name) {
+                    row(title: pack.name, count: count,
+                        selected: !model.showFavoritesOnly && model.packFilter == pack.name) {
+                        model.showFavoritesOnly = false
                         model.packFilter = pack.name
                     }
                 }
@@ -105,9 +114,15 @@ private struct PackSidebar: View {
         .listStyle(.sidebar)
     }
 
-    private func row(title: String, count: Int, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func row(title: String, count: Int, selected: Bool, icon: String? = nil,
+                     tint: Color = .secondary, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.caption2)
+                        .foregroundStyle(tint)
+                }
                 Text(title)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -160,13 +175,19 @@ private struct MissionTableView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(model.filteredMissions) { mission in
-                            MissionRow(mission: mission, selected: model.selection == mission.uid)
+                            MissionRow(mission: mission,
+                                       selected: model.selection == mission.uid,
+                                       favorite: model.isFavorite(mission))
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     model.selection = mission.uid
                                     model.select(mission)
                                 }
                                 .contextMenu {
+                                    Button(model.isFavorite(mission) ? "取消收藏" : "收藏") {
+                                        model.toggleFavorite(mission)
+                                    }
+                                    Divider()
                                     Button("启动此任务") {
                                         model.selection = mission.uid
                                         model.select(mission)
@@ -200,9 +221,20 @@ private struct MissionTableView: View {
 private struct MissionRow: View {
     let mission: MissionDTO
     let selected: Bool
+    let favorite: Bool
 
     var body: some View {
         HStack(spacing: 8) {
+            Group {
+                if favorite {
+                    Image(systemName: "star.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 12)
             Text(mission.name)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -263,7 +295,18 @@ private struct InspectorView: View {
 
     private func header(_ mission: MissionDTO) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(mission.name).font(.title3).bold()
+            HStack(spacing: 8) {
+                Text(mission.name).font(.title3).bold()
+                Spacer(minLength: 4)
+                Button {
+                    model.toggleFavorite(mission)
+                } label: {
+                    Image(systemName: model.isFavorite(mission) ? "star.fill" : "star")
+                        .foregroundStyle(model.isFavorite(mission) ? Color.orange : Color.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(model.isFavorite(mission) ? "取消收藏" : "收藏")
+            }
             HStack(spacing: 6) {
                 tag(mission.pack)
                 if !mission.side.isEmpty { tag(mission.side) }

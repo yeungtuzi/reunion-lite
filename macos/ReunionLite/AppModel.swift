@@ -17,6 +17,12 @@ final class AppModel {
     var packFilter: String? = nil {
         didSet { scheduleFilter() }
     }
+    var showFavoritesOnly: Bool = false {
+        didSet { scheduleFilter() }
+    }
+    private(set) var favoriteCount: Int = 0
+    /// Cached favorite ids so row bodies never rebuild a Set from config.
+    private(set) var favoriteUIDs: Set<String> = []
     private(set) var filteredMissions: [MissionDTO] = []
     private(set) var packCounts: [String: Int] = [:]
     var selection: String? = nil
@@ -36,6 +42,7 @@ final class AppModel {
 
     init() {
         config = AppConfig.load()
+        favoriteUIDs = Set(config.favorites ?? [])
         selection = config.lastMissionUID
         status = "加载缓存…"
 
@@ -97,9 +104,13 @@ final class AppModel {
     private func applyFilter() {
         let needle = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let pack = packFilter
+        let favorites = favoriteUIDs
         var result: [MissionDTO] = []
         result.reserveCapacity(missions.count)
+        var favoriteHit = 0
         for mission in missions where mission.launchable {
+            if favorites.contains(mission.uid) { favoriteHit += 1 }
+            if showFavoritesOnly && !favorites.contains(mission.uid) { continue }
             if let pack, mission.pack != pack { continue }
             if !needle.isEmpty {
                 let key = searchKeys[mission.uid] ?? ""
@@ -108,6 +119,24 @@ final class AppModel {
             result.append(mission)
         }
         filteredMissions = result
+        favoriteCount = favoriteHit
+    }
+
+    func isFavorite(_ mission: MissionDTO) -> Bool {
+        favoriteUIDs.contains(mission.uid)
+    }
+
+    func toggleFavorite(_ mission: MissionDTO) {
+        var favorites = config.favorites ?? []
+        if favoriteUIDs.contains(mission.uid) {
+            favorites.removeAll { $0 == mission.uid }
+            favoriteUIDs.remove(mission.uid)
+        } else {
+            favorites.append(mission.uid)
+            favoriteUIDs.insert(mission.uid)
+        }
+        config.favorites = favorites
+        scheduleFilter()
     }
 
     private func rebuildSearchIndex() {

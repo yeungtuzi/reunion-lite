@@ -28,6 +28,7 @@ struct AppConfig: Codable {
     var lastMissionUID: String? = nil
     var hideOnLaunch: Bool = true
     var defaultsLoaded: Bool = false
+    var favorites: [String]? = nil
     var options: OptionsConfig = OptionsConfig()
 
     static var supportDirectory: URL {
