@@ -390,6 +390,7 @@ final class AppModel {
         do {
             try installAiRoot(gameRoot: gameRoot, runDir: runDir, scenario: scenario)
             try writeVeraConfig(runDir: runDir)
+            try writeVeraSpawnIni(runDir: runDir)
             applyVeraGameSpeed(snapshot.options.speed)
         } catch {
             isLaunching = false
@@ -412,8 +413,12 @@ final class AppModel {
         process.currentDirectoryURL = URL(fileURLWithPath: runDir)
         var environment = ProcessInfo.processInfo.environment
         environment["RA2_DIR"] = runDir
-        environment["RA2_SPAWN_INI"] = runDir + "/spawn.ini"
+        environment["RA2_SPAWN_INI"] = runDir + "/spawn-vera.ini"
         environment["VERA_TOLERANT_AI"] = "1"
+        // Our VERA fork drops to 15 fps when the window is not focused, which
+        // also slows the simulation; keep the same pace as focused play.
+        environment["VERA_FPS_CAP"] = "60"
+        environment["VERA_FPS_CAP_IDLE"] = "60"
         environment["LANG"] = "zh_CN.GBK"
         process.environment = environment
         process.standardOutput = handle ?? FileHandle.nullDevice
@@ -432,6 +437,8 @@ final class AppModel {
             try process.run()
             runningProcess = process
             lastLaunchDate = Date()
+            NSRunningApplication(processIdentifier: process.processIdentifier)?
+                .activate(options: [.activateIgnoringOtherApps])
             config.lastMissionUID = mission.uid
             config.lastMission = mission.index
             status = "VERA20K 运行中：\(mission.name)"
@@ -472,6 +479,27 @@ final class AppModel {
         try FileManager.default.copyItem(atPath: fallback, toPath: runDir + "/aimd.ini")
     }
 
+    /// The gamemd spawn.ini is written in the system ANSI codepage (GBK) for
+    /// the Wine path, but VERA requires its launch file to be UTF-8.
+    private func writeVeraSpawnIni(runDir: String) throws {
+        let source = runDir + "/spawn.ini"
+        let data = try Data(contentsOf: URL(fileURLWithPath: source))
+        let gb18030 = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(
+            CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)))
+        var text = String(data: data, encoding: gb18030)
+            ?? String(data: data, encoding: .utf8)
+            ?? ""
+        // VERA's pacer treats GameSpeed as a delay bucket: 1 is fastest,
+        // 6 is slowest (opposite of the gamemd slider). The launcher's
+        // 0..6 value is slow-to-fast, so invert it for this engine.
+        let inverted = max(0, min(6, 6 - (config.options.speed)))
+        text = text.replacingOccurrences(of: "GameSpeed=", with: "GameSpeed=__VERA__")
+        text = text.replacingOccurrences(of: "GameSpeed=__VERA__\(config.options.speed)",
+                                         with: "GameSpeed=\(inverted)")
+        text = text.replacingOccurrences(of: "GameSpeed=__VERA__", with: "GameSpeed=")
+        try text.write(toFile: runDir + "/spawn-vera.ini", atomically: true, encoding: .utf8)
+    }
+
     /// VERA reads its campaign pace from VERA.INI's [Options] GameSpeed (the
     /// spawn.ini value alone is not enough for the campaign screen), so mirror
     /// the launcher's chosen speed into the engine profile before starting.
@@ -487,7 +515,7 @@ final class AppModel {
                 continue
             }
             if section == "Options" && line.hasPrefix("GameSpeed=") {
-                lines[index] = "GameSpeed=\(speed)"
+                lines[index] = "GameSpeed=\(max(0, min(6, 6 - speed)))"
             }
         }
         text = lines.joined(separator: "\n")
