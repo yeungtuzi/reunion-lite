@@ -20,6 +20,10 @@
 > 打补丁）；界面重排为与 macOS 0.4 一致的布局。除部分第三方 MOD 单位
 > （如林德拉克计划的机甲、命运之瞳）存在渲染问题外，各种任务包基本正常。
 > 详见 [Linux / VERA20K 说明](docs/linux-vera20k.md)。
+>
+> **0.5 同时把 0.4 的 macOS 内容并入同一版本**：SwiftUI 新布局（游戏选项面板、收藏、
+> 扩展平台开关）、VERA20K 引擎路径（UTF-8 spawn、速度反转、60fps）、RA2Master 修改器集成。
+> macOS 应用需在 Mac 上执行 `scripts/macos/build-app.sh` 构建（本仓库不附带签名产物）。
 
 ## 0.5 更新（实验性：Linux aarch64 / MTGPU + VERA20K）
 
