@@ -34,9 +34,30 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 修复在 `yeungtuzi/vera20k` 的 `linux-tolerant-ai` 分支：设置 `VERA_TOLERANT_AI=1`
 时保留其余 team AI、丢弃未知成员。没有该补丁时引擎会在载入地图后退出。
 
+## 画面 / 日志 / 音频
+
+- 「设置 → 画面」的分辨率与渲染器会写进 `Run/RA2MD.ini [Video]` 和 `Run/ddraw.ini [ddraw]`：
+  `ScreenWidth/ScreenHeight`、`ddraw width/height`、`windowed=true`、`fullscreen=false`、
+  `renderer=gdi|opengl|direct3d9`。改分辨率不用重装，下次启动即生效。
+- 状态栏右侧显示当前分辨率与任务计数；启动后「日志」按钮打开
+  `~/.local/share/reunion-lite/last-launch.log`（两个引擎的输出都写这里）。
+- 任务列表会记住上次选中的任务（`lastMission`），重开启动器自动定位。
+
+## 音频与性能
+
+- aibook 上加载任务时曾出现爆音，`ra2.log` 里是成片的
+  `audio stream error: Buffer underrun/overrun`：默认 512 帧（约 11 ms）太小。
+  「设置 → 高级 → VERA20K 音频缓冲」设成 2048 后，一次完整运行 underrun 计数为 0。
+- 「性能指示」勾选后以 `VERA_FPS_COUNTER=1` 启动，进入游戏即显示 FPS/CPU 面板
+  （等效 Ctrl+Alt+F）。
+- 注意：aibook 的 MTGPU 目前没有 Vulkan ICD，wgpu 会退回 **llvmpipe 软件渲染**，
+  1280×720 下约 20 FPS。这是驱动能力问题，不是启动器配置问题。
+
 ## 已验证
 
 aibook（Ubuntu 24.04 arm64 + M1000）上：
 
 * 任务列表 3389/3390 可启动（唯一缺失项是确实不存在的 `Mod&AI\1996068576846557185`）
 * 从启动器选任务 → 启动 → VERA20K 载入地图、进入游戏、模拟正常运行
+* Wine-FEX 路径同样实测：`ra2-launch.sh` → FEX + Steam Linux Runtime →
+  `gamemd-spawn.exe` 运行，Xorg `:3` 上出现 “Yuri's Revenge” 窗口（1286×752）
