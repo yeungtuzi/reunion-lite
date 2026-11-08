@@ -25,6 +25,19 @@
 > 扩展平台开关）、VERA20K 引擎路径（UTF-8 spawn、速度反转、60fps）、RA2Master 修改器集成。
 > macOS 应用需在 Mac 上执行 `scripts/macos/build-app.sh` 构建（本仓库不附带签名产物）。
 
+## 版本历史（0.5 是累积版本，包含此前全部内容）
+
+| 版本 | 内容 |
+|---|---|
+| 0.1 | Windows x64 启动器（Win32，MinGW 静态单文件） |
+| 0.2 | Linux arm64：原生 Qt6 启动器 + FEX/Proton 运行 32 位 `gamemd` |
+| 0.3 | macOS 27（Apple Silicon）：SwiftUI 启动器 + CrossOver 26 后端 |
+| 0.4 | macOS：新布局（侧栏 / 六列任务表 / 检查器 + 游戏选项面板）、收藏、VERA20K 实验路径、RA2Master 修改器集成（未单独发版，并入 0.5） |
+| **0.5** | **Linux aarch64 / MTGPU 调用 VERA20K（实验性，需要 patch）**；Linux 界面与 macOS 0.4 对齐；Wine-FEX 与 VERA20K 双引擎；MTGPU Vulkan；已知部分第三方 MOD 单位渲染异常 |
+
+0.5 一个包覆盖 Windows / Linux / macOS 三平台的全部功能：三端共用同一份
+`src/core`（扫描、缓存、启动计划、地图选项、客户端默认值），UI 与引擎后端按平台自动选择。
+
 ## 0.5 更新（实验性：Linux aarch64 / MTGPU + VERA20K）
 
 - **Linux 启动器对齐 macOS 0.4 布局**：顶栏（游戏目录/搜索/重新扫描/设置）、任务包侧栏、
