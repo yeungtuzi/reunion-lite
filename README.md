@@ -49,8 +49,12 @@
 - **VERA20K 适配**（启动器自动处理）：UTF-8 `spawn.ini` / `spawn-vera.ini` + `RA2_SPAWN_INI`、
   AI 根注入、`config.toml`、`movies03.mix` 兜底、游戏速度 6−speed 反转、
   `VERA_TOLERANT_AI`、`VERA_FPS_COUNTER`、`VERA_AUDIO_BUFFER`
-- **VERA20K 需要打补丁**（本仓库不包含引擎源码）：`yeungtuzi/vera20k` 的 `main`
-  已含 4 个可移植补丁（容忍 AIMD 未知成员、性能读数、音频缓冲、退出 FPS 摘要）
+- **VERA20K 需要打补丁**（本仓库不包含引擎源码）：请直接使用我们 fork 的
+  [`yeungtuzi/vera20k`](https://github.com/yeungtuzi/vera20k)（`main` 已含 4 个可移植补丁：
+  容忍 AIMD 未知成员、性能读数、音频缓冲、退出 FPS 摘要）。一条命令搞定：
+  ```sh
+  scripts/linux/build-vera20k.sh   # clone/update fork → cargo build → ~/.local/bin/vera20k
+  ```
 - **MTGPU Vulkan**：走 `/etc/vulkan/icd.d/mtvk.json`（M1000，Vulkan 1.3.290）+ X11 窗口；
   Wayland 下该驱动不支持 surface 会自动退回 llvmpipe
 - **画面 / 日志**：分辨率与 cnc-ddraw 渲染器写入 `Run/RA2MD.ini`、`Run/ddraw.ini`；

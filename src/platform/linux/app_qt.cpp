@@ -611,7 +611,8 @@ int main(int argc, char** argv) {
         engine->setCurrentIndex(engine->findData(settings.value("engine", "wine").toString()));
         form->addRow("游戏引擎", engine);
         auto* veraPath = new QLineEdit(settings.value("vera20kBin").toString(), &dlg);
-        veraPath->setPlaceholderText("留空自动查找：~/vera20k/target/release/vera20k");
+        veraPath->setPlaceholderText(
+            "留空自动查找 ~/vera20k 或 ~/.local/bin/vera20k（请用 yeungtuzi/vera20k 的补丁版）");
         auto* pickVera = new QPushButton("选择…", &dlg);
         auto* veraRow = new QHBoxLayout;
         veraRow->addWidget(veraPath, 1);
@@ -619,7 +620,8 @@ int main(int argc, char** argv) {
         form->addRow("VERA20K 可执行文件", veraRow);
         auto* hint = new QLabel(
             "VERA20K 是实验引擎：使用 Run/ 作为 ra2_dir，自动注入 Mod&AI 的 AI 根，"
-            "不需要 Wine/Proton。", &dlg);
+            "不需要 Wine/Proton。Reunion 的 AIMD 需要补丁版引擎，请用 "
+            "scripts/linux/build-vera20k.sh 构建 github.com/yeungtuzi/vera20k。", &dlg);
         hint->setWordWrap(true);
         form->addRow(hint);
 
