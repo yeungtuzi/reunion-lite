@@ -53,6 +53,26 @@ struct SettingsView: View {
                     Toggle("启动游戏后隐藏启动器（省电）", isOn: $model.config.hideOnLaunch)
                 }
 
+                Section("修改器") {
+                    LabeledContent("程序路径") {
+                        HStack {
+                            TextField("", text: Binding(
+                                get: { model.config.resolvedTrainerPath },
+                                set: { model.config.trainerPath = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                            Button("选择…") { model.chooseTrainer() }
+                        }
+                    }
+                    Toggle("启动游戏时同时启动修改器", isOn: Binding(
+                        get: { model.config.autoStartTrainerEnabled },
+                        set: { model.config.autoStartTrainer = $0 }
+                    ))
+                    Text("修改器必须和游戏运行在同一个 CrossOver bottle（RA2）里，才能读写 gamemd 的内存。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("客户端默认值") {
                     HStack {
                         Text("从 ReunionLite.ini / CampaignSetting.ini 读取")

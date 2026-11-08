@@ -29,6 +29,10 @@ struct AppConfig: Codable {
     var hideOnLaunch: Bool = true
     var defaultsLoaded: Bool = false
     var favorites: [String]? = nil
+    var trainerPath: String? = nil
+    var autoStartTrainer: Bool? = nil
+
+    var autoStartTrainerEnabled: Bool { autoStartTrainer ?? true }
     var options: OptionsConfig = OptionsConfig()
 
     static var supportDirectory: URL {
@@ -56,4 +60,8 @@ struct AppConfig: Codable {
     }
 
     var resolutionLabel: String { "\(width) × \(height)" }
+
+    var resolvedTrainerPath: String {
+        trainerPath ?? (NSHomeDirectory() + "/Documents/ra2master/红色警戒2修改大师.exe")
+    }
 }

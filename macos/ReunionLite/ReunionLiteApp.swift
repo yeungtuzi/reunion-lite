@@ -54,6 +54,8 @@ struct ReunionLiteApp: App {
                     model.packFilter = nil
                 }
                 .keyboardShortcut("0", modifiers: [.command])
+                Button("启动修改器") { model.launchTrainer() }
+                    .keyboardShortcut("t", modifiers: [.command, .shift])
                 Divider()
                 Button("设置…") { model.showSettings = true }
                     .keyboardShortcut(",", modifiers: [.command])

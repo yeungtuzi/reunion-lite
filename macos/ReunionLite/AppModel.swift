@@ -34,6 +34,7 @@ final class AppModel {
     var logPath: String?
     var warnings: [String] = []
     private(set) var runningProcess: Process?
+    private(set) var trainerProcess: Process?
     var lastLaunchDate: Date?
 
     private var searchKeys: [String: String] = [:]
@@ -320,6 +321,11 @@ final class AppModel {
             config.lastMissionUID = mission.uid
             config.lastMission = mission.index
             status = "游戏运行中：\(mission.name)"
+            if config.autoStartTrainerEnabled {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    _ = self.launchTrainer()
+                }
+            }
             if config.hideOnLaunch {
                 NSApp.hide(nil)
             }
@@ -345,6 +351,58 @@ final class AppModel {
 
     func stopGame() {
         runningProcess?.terminate()
+    }
+
+    // MARK: - Trainer (RA2Master)
+
+    var trainerAvailable: Bool {
+        FileManager.default.fileExists(atPath: config.resolvedTrainerPath)
+    }
+
+    var trainerRunning: Bool {
+        trainerProcess?.isRunning == true
+    }
+
+    private func winePath(_ hostPath: String) -> String {
+        "Z:" + hostPath.replacingOccurrences(of: "/", with: "\\")
+    }
+
+    @discardableResult
+    func launchTrainer() -> Bool {
+        guard !trainerRunning else { return true }
+        let trainer = config.resolvedTrainerPath
+        guard FileManager.default.fileExists(atPath: trainer) else {
+            lastError = "找不到修改器：\(trainer)\n可在设置里指定路径。"
+            return false
+        }
+        let wine = config.crossOverRoot + "/bin/wine"
+        guard FileManager.default.fileExists(atPath: wine) else {
+            lastError = "找不到 CrossOver wine：\(wine)"
+            return false
+        }
+        let dir = (trainer as NSString).deletingLastPathComponent
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: wine)
+        process.arguments = [
+            "--bottle", config.bottle,
+            "--no-update",
+            "--workdir", dir,
+            "--cx-app", winePath(trainer),
+        ]
+        var environment = ProcessInfo.processInfo.environment
+        environment["LANG"] = "zh_CN.GBK"
+        process.environment = environment
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            trainerProcess = process
+            status = "修改器已启动"
+            return true
+        } catch {
+            lastError = "无法启动修改器：\(error.localizedDescription)"
+            return false
+        }
     }
 
     // MARK: - Dialogs
@@ -376,6 +434,19 @@ final class AppModel {
         panel.message = "选择 CrossOver.app/Contents/SharedSupport/CrossOver 目录"
         if panel.runModal() == .OK, let url = panel.url {
             config.crossOverRoot = url.path
+        }
+    }
+
+    func chooseTrainer() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: (config.resolvedTrainerPath as NSString).deletingLastPathComponent)
+        panel.prompt = "选择"
+        panel.message = "选择修改器（红色警戒2修改大师.exe）"
+        if panel.runModal() == .OK, let url = panel.url {
+            config.trainerPath = url.path
         }
     }
 

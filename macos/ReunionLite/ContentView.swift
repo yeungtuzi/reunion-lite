@@ -75,6 +75,14 @@ private struct TopBar: View {
             .disabled(model.isScanning)
 
             Button {
+                model.launchTrainer()
+            } label: {
+                Label("修改器", systemImage: "wrench.and.screwdriver")
+            }
+            .help("在同一个 CrossOver bottle 里启动《红色警戒2修改大师》")
+            .disabled(!model.trainerAvailable)
+
+            Button {
                 model.showSettings = true
             } label: {
                 Label("设置", systemImage: "gearshape")
