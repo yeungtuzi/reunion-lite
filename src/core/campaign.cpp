@@ -1,5 +1,6 @@
 ﻿#include "campaign.h"
 #include "encoding.h"
+#include "platform_path.h"
 #include "ini.h"
 
 #include <algorithm>
@@ -16,11 +17,11 @@ namespace rl {
 namespace {
 
 fs::path Fs(const std::string& utf8) {
-    std::string p = utf8;
-#ifndef _WIN32
-    for (char& c : p) if (c == '\\') c = '/';
+#ifdef _WIN32
+    return fs::u8path(utf8);
+#else
+    return fs::u8path(rl::MapPlatformPath(utf8));
 #endif
-    return fs::u8path(p);
 }
 std::string U8(const fs::path& p) { return p.u8string(); }
 
@@ -303,6 +304,9 @@ Fingerprint FingerprintMapsFolder(const std::string& gameRootUtf8) {
         hashInput.push_back('\0');
     }
     fp.hash = Fnv1a(hashInput);
+#ifndef _WIN32
+    fp.hash ^= PlatformFingerprintSalt();
+#endif
     if (fp.files.empty()) fp.hash = 0;
     return fp;
 }

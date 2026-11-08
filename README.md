@@ -2,7 +2,7 @@
 
 轻量、离线、零第三方依赖的《红色警戒2 重聚未来》战役启动器。
 
-> 版本 0.2 · Windows x64 · Linux arm64（国产 MTGPU 实测） · Apache-2.0
+> 版本 0.3 · Windows x64 · Linux arm64 · macOS 27（Apple Silicon） · Apache-2.0
 
 ![Reunion Lite 界面](docs/screenshot.png)
 
@@ -11,6 +11,10 @@
 > **0.2 起新增 Linux（ARM64）支持：原生 Qt6 启动器 + FEX/Proton 运行 32 位 `gamemd`，
 > 支持 Windows 与 Linux，已在国产 GPU（摩尔线程 M1000 / MTGPU）上实测进入任务。** 详见
 > [ARM64 Linux / M1000 指南](docs/ARM64-LINUX-MT1000.md)。
+>
+> **0.3 起新增 macOS 27（Apple Silicon）支持：原生 SwiftUI 启动器，CrossOver 26 作为后端，
+> 使用原版 `gamemd.exe` 引擎（经 `gamemd-spawn.exe -SPAWN` 启动），不是重写引擎。**
+> 详见 [macOS 指南](docs/MACOS.md)。
 
 ## 这是什么
 
@@ -159,6 +163,23 @@ cmake --build build -j
 - `src/core` 只依赖 C++17 标准库（`std::filesystem`、容器、文件流），无 Win32 调用。
 - 系统 ANSI 编解码、目录快速枚举、进程启动、硬链接封装在 `src/platform/win`。
 - 非 Windows 平台实现 `encoding.h` 与 `ListIniFileStamps()` 后，接一个原生 UI 即可复用扫描、缓存、启动计划生成与地图选项合并；后续可接 vera20k 等重实现引擎。
+
+## macOS 27（0.3 新增，Apple Silicon）
+
+- 系统：macOS 27（Apple Silicon，需 Rosetta 2）
+- 后端：CrossOver **26.x**（26.3 实测；27 已移除 32 位支持，不要升级）
+- 引擎：原版 `gamemd.exe` / `gamemd-spawn.exe`
+- 启动器：原生 SwiftUI，3,389/3,390 任务、完整战役选项、1080p 窗口、默认速度 5
+
+```bash
+brew install --cask crossover          # 26.x，登录许可证并关闭自动更新
+./scripts/macos/setup-bottle.sh        # 创建 RA2 bottle，映射 D:/Z:
+./scripts/macos/install-app.sh         # 构建 + 签名 + 安装到 /Applications
+```
+
+![macOS 启动器](docs/macos-ui.png)
+
+完整说明、选项与排错见 [docs/MACOS.md](docs/MACOS.md)。
 
 ## 已知限制
 

@@ -1,6 +1,7 @@
 build/
-tools/
+.build/
 *.log
 ReunionLite.ini
 campaign.cache
 .rl_*
+dist/

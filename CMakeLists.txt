@@ -9,6 +9,7 @@ add_executable(reunion-lite-qt
     src/core/fs_generic.cpp
     src/core/launch.cpp
     src/platform/linux/encoding.cpp
+    src/platform/linux/path_map.cpp
     src/platform/linux/runprep.cpp
     src/platform/linux/app_qt.cpp)
 target_include_directories(reunion-lite-qt PRIVATE src src/core src/platform/linux)

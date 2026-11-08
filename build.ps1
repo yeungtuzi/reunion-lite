@@ -28,6 +28,7 @@ $sources = @(
     'src\core\fs_generic.cpp',
     'src\core\launch.cpp',
     'src\platform\win\encoding.cpp',
+    'src\platform\win\path_map.cpp',
     'src\platform\win\fs_win.cpp',
     'src\platform\win\winutil.cpp',
     'src\platform\win\runprep.cpp',
