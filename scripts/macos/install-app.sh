@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DEST="/Applications/ReunionLite.app"
 
-"$ROOT/scripts/build-app.sh"
+"$ROOT/scripts/macos/build-app.sh"
 
 echo "installing to $DEST"
 if [ -d "$DEST" ]; then
