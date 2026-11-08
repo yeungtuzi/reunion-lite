@@ -8,9 +8,11 @@ add_executable(reunion-lite-qt
     src/core/campaign.cpp
     src/core/fs_generic.cpp
     src/core/launch.cpp
+    src/core/client_defaults.cpp
     src/platform/linux/encoding.cpp
     src/platform/linux/path_map.cpp
     src/platform/linux/runprep.cpp
+    src/platform/linux/vera.cpp
     src/platform/linux/app_qt.cpp)
 target_include_directories(reunion-lite-qt PRIVATE src src/core src/platform/linux)
 target_link_libraries(reunion-lite-qt PRIVATE Qt6::Widgets)
