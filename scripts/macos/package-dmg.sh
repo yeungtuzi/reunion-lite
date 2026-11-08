@@ -71,8 +71,24 @@ Notes:
   - No game files are included; you need your own Yuri's Revenge assets.
 README
 
-hdiutil create -volname "Reunion Lite ${VERSION}" -srcfolder "$STAGE" \
-    -ov -format UDZO "$DIST/ReunionLite-${VERSION}-macos-arm64.dmg" >/dev/null
+DMG="$DIST/ReunionLite-${VERSION}-macos-arm64.dmg"
+rm -f "$DMG"
+# GitHub's macOS runners occasionally report "Resource busy" on the first
+# hdiutil create; detach any stale volume and retry a few times.
+hdiutil detach "/Volumes/Reunion Lite ${VERSION}" -force >/dev/null 2>&1 || true
+ok=0
+for attempt in 1 2 3; do
+    if hdiutil create -volname "Reunion Lite ${VERSION}" -srcfolder "$STAGE" \
+        -nospotlight -ov -format UDZO "$DMG" >/dev/null 2>&1; then
+        ok=1
+        break
+    fi
+    sleep 2
+done
+if [ "$ok" -ne 1 ]; then
+    echo "hdiutil create failed after retries" >&2
+    exit 1
+fi
 
 cp "$SRC_TAR" "$DIST/$(basename "$SRC_TAR")"
 (
