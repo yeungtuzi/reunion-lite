@@ -48,6 +48,7 @@
 #include <algorithm>
 #include <map>
 #include <cstdlib>
+#include <unistd.h>
 #include <functional>
 #include <string>
 #include <vector>
@@ -642,6 +643,18 @@ int main(int argc, char** argv) {
         renderer->setCurrentIndex(
             std::max(0, renderer->findData(settings.value("videoRenderer", "gdi").toString())));
         form->addRow("渲染器（cnc-ddraw）", renderer);
+        auto* veraBackend = new QComboBox(&dlg);
+        veraBackend->addItem("自动（有 MTGPU Vulkan 就用）", "auto");
+        veraBackend->addItem("MTGPU Vulkan（X11 窗口）", "mtgpu");
+        veraBackend->addItem("软件渲染（llvmpipe / Wayland）", "software");
+        veraBackend->setCurrentIndex(std::max(
+            0, veraBackend->findData(settings.value("veraBackend", "auto").toString())));
+        form->addRow("VERA20K 图形后端", veraBackend);
+        auto* veraBackendHint = new QLabel(
+            "MTGPU 的 Vulkan 驱动（/etc/vulkan/icd.d/mtvk.json）只支持 X11 surface，"
+            "走 Wayland 会自动退回 llvmpipe。", &dlg);
+        veraBackendHint->setWordWrap(true);
+        form->addRow(veraBackendHint);
 
         heading("高级");
         auto* hideOnLaunch = new QCheckBox("启动游戏后隐藏启动器（省电）", &dlg);
@@ -708,6 +721,7 @@ int main(int argc, char** argv) {
             settings.setValue("videoWidth", res.width());
             settings.setValue("videoHeight", res.height());
             settings.setValue("videoRenderer", renderer->currentData().toString());
+            settings.setValue("veraBackend", veraBackend->currentData().toString());
             resolutionLabel->setText(QString("%1 × %2")
                                          .arg(res.width())
                                          .arg(res.height()));
@@ -792,6 +806,26 @@ int main(int argc, char** argv) {
             env.insert("RA2_SPAWN_INI", runDir + "/spawn-vera.ini");
             env.insert("VERA_TOLERANT_AI", "1");
             env.insert("VERA_FPS_CAP", "60");
+            // MTGPU: the vendor Vulkan ICD lives in /etc/vulkan/icd.d and only
+            // advertises X11 surfaces, so run the engine through XWayland when
+            // we use it; otherwise stay on Wayland with llvmpipe.
+            const QString backend = settings.value("veraBackend", "auto").toString();
+            const bool mtvk = QFileInfo::exists("/etc/vulkan/icd.d/mtvk.json");
+            const bool useMt = backend == "mtgpu" || (backend == "auto" && mtvk);
+            if (useMt) {
+                env.insert("WGPU_BACKEND", "vulkan");
+                env.insert("VK_ICD_FILENAMES", "/etc/vulkan/icd.d/mtvk.json");
+                env.remove("WAYLAND_DISPLAY");
+                if (env.value("DISPLAY").isEmpty()) env.insert("DISPLAY", ":0");
+                if (env.value("XAUTHORITY").isEmpty()) {
+                    QDir xauthDir("/run/user/" + QString::number(::getuid()));
+                    const QStringList files = xauthDir.entryList({"xauth_*"}, QDir::Files);
+                    if (!files.isEmpty())
+                        env.insert("XAUTHORITY", xauthDir.filePath(files.first()));
+                }
+            } else if (backend == "software") {
+                env.remove("VK_ICD_FILENAMES");
+            }
             env.insert("VERA_FPS_CAP_IDLE", "60");
             env.insert("LANG", "zh_CN.GBK");
             if (settings.value("fpsCounter", false).toBool())
