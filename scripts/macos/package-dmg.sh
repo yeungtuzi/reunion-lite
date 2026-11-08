@@ -4,7 +4,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 VERA_SRC="${VERA20K_SRC:-$HOME/vscode/vera20k}"
-VERSION="0.4"
+VERSION="0.5"
 DIST="$ROOT/dist"
 STAGE="$ROOT/build/macos/dmg"
 COMMIT="$(git -C "$VERA_SRC" rev-parse --short=10 HEAD)"
@@ -51,7 +51,7 @@ are included. Red Alert 2 and Yuri's Revenge are trademarks of Electronic Arts.
 SOURCE
 
 cat > "$STAGE/README.txt" <<'README'
-Reunion Lite 0.4 — macOS (Apple Silicon)
+Reunion Lite 0.5 — macOS (Apple Silicon)
 =======================================
 
 Drag both ReunionLite.app and VERA20K.app into /Applications.

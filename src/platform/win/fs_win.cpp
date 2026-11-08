@@ -7,6 +7,50 @@
 
 namespace rl {
 
+namespace {
+
+std::wstring WidenUtf8(const std::string& text) {
+    if (text.empty()) return {};
+    int len = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
+    if (len <= 0) return {};
+    std::wstring wide(static_cast<std::size_t>(len), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), len);
+    return wide;
+}
+
+std::string NarrowUtf8(const std::wstring& wide) {
+    if (wide.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), nullptr, 0,
+                                  nullptr, nullptr);
+    if (len <= 0) return {};
+    std::string out(static_cast<std::size_t>(len), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), out.data(), len,
+                        nullptr, nullptr);
+    return out;
+}
+
+} // namespace
+
+// NTFS lookups are case-insensitive already; these two only have to answer
+// whether the requested directory exists and return its path unchanged.
+std::string ResolveDirIgnoreCase(const std::string& rootUtf8, const std::string& relUtf8) {
+    std::wstring joined = WidenUtf8(rootUtf8);
+    if (joined.empty()) return {};
+    if (joined.back() != L'\\' && joined.back() != L'/') joined.push_back(L'\\');
+    joined += WidenUtf8(relUtf8);
+    const DWORD attrs = GetFileAttributesW(joined.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY)) return {};
+    return NarrowUtf8(joined);
+}
+
+std::string ResolvePathIgnoreCase(const std::string& absUtf8) {
+    const std::wstring wide = WidenUtf8(absUtf8);
+    if (wide.empty()) return {};
+    const DWORD attrs = GetFileAttributesW(wide.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY)) return {};
+    return absUtf8;
+}
+
 bool ListIniFileStamps(const std::string& dirUtf8, std::vector<FileStamp>& out) {
     out.clear();
     int wideLen =
