@@ -382,6 +382,7 @@ final class AppModel {
         }
         do {
             try installAiRoot(gameRoot: gameRoot, runDir: runDir, scenario: scenario)
+            ensureMoviesArchive(runDir: runDir)
             try writeVeraConfig(runDir: runDir)
             try writeVeraSpawnIni(runDir: runDir)
             applyVeraGameSpeed(snapshot.options.speed)
@@ -470,6 +471,14 @@ final class AppModel {
         }
         try? FileManager.default.removeItem(atPath: runDir + "/aimd.ini")
         try FileManager.default.copyItem(atPath: fallback, toPath: runDir + "/aimd.ini")
+    }
+
+    /// Reunion's merged asset set omits the base game's movie archive; VERA's
+    /// archive mount requires it to exist, so give it a valid empty MIX.
+    private func ensureMoviesArchive(runDir: String) {
+        let path = runDir + "/movies03.mix"
+        guard !FileManager.default.fileExists(atPath: path) else { return }
+        try? Data([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).write(to: URL(fileURLWithPath: path))
     }
 
     /// The gamemd spawn.ini is written in the system ANSI codepage (GBK) for
