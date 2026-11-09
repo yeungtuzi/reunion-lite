@@ -828,7 +828,7 @@ int main(int argc, char** argv) {
             } else if (backend == "software") {
                 env.remove("VK_ICD_FILENAMES");
             }
-            env.insert("VERA_FPS_CAP_IDLE", "60");
+            env.insert("VERA_FPS_CAP_IDLE", "15");
             env.insert("LANG", "zh_CN.GBK");
             if (settings.value("fpsCounter", false).toBool())
                 env.insert("VERA_FPS_COUNTER", "1");

@@ -412,7 +412,7 @@ final class AppModel {
         // Our VERA fork drops to 15 fps when the window is not focused, which
         // also slows the simulation; keep the same pace as focused play.
         environment["VERA_FPS_CAP"] = "60"
-        environment["VERA_FPS_CAP_IDLE"] = "60"
+        environment["VERA_FPS_CAP_IDLE"] = "15"
         environment["LANG"] = "zh_CN.GBK"
         process.environment = environment
         process.standardOutput = handle ?? FileHandle.nullDevice
