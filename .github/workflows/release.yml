@@ -38,7 +38,7 @@ jobs:
       - name: Build VERA20K
         run: |
           git clone --depth=1 --branch "$VERA20K_REF" "$VERA20K_REPO" "$RUNNER_TEMP/vera20k"
-          cargo build --release --manifest-path "$RUNNER_TEMP/vera20k/Cargo.toml" --bin vera20k
+          cargo build --release --features debug-tools --manifest-path "$RUNNER_TEMP/vera20k/Cargo.toml" --bin vera20k
       - name: Package
         run: |
           STAGE="dist/reunion-lite-$VERSION-linux-${{ matrix.arch }}"

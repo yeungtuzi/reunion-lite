@@ -28,7 +28,7 @@ else
 fi
 
 echo "Building (release)…"
-cargo build --release --manifest-path "$SRC/Cargo.toml"
+cargo build --release --features debug-tools --manifest-path "$SRC/Cargo.toml"
 
 install -Dm755 "$SRC/target/release/vera20k" "$PREFIX/bin/vera20k"
 echo "Installed: $PREFIX/bin/vera20k"

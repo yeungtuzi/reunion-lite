@@ -14,9 +14,9 @@ VERA_BIN="$SRC/target/release/vera20k"
 (
     cd "$SRC"
     if [ -n "${VERA20K_TARGET:-}" ]; then
-        cargo build --release --target "$VERA20K_TARGET" --bin vera20k
+        cargo build --release --features debug-tools --target "$VERA20K_TARGET" --bin vera20k
     else
-        cargo build --release --bin vera20k
+        cargo build --release --features debug-tools --bin vera20k
     fi
 )
 if [ -n "${VERA20K_TARGET:-}" ]; then
