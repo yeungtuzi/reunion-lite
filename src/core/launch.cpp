@@ -148,7 +148,10 @@ std::string SpawnText(const Mission& m, const LaunchPlan& plan, const LaunchOpti
 
     std::string out;
     out += "[Settings]\r\n";
-    out += "GameSpeed=" + std::to_string(options.gameSpeed) + "\r\n";
+    // The launcher slider is slow (0) to fast (6); spawn.ini and the engine
+    // store the native direction (0 = fastest).
+    int nativeSpeed = 6 - (options.gameSpeed < 0 ? 0 : options.gameSpeed > 6 ? 6 : options.gameSpeed);
+    out += "GameSpeed=" + std::to_string(nativeSpeed) + "\r\n";
     out += "Game=" + game + "\r\n";
     out += "Mission=" + m.path + "\r\n";
     out += "Ra2Mode=False\r\n";

@@ -168,7 +168,7 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
                 continue;
             }
             if (section == "Options" && trimmed.rfind("GameSpeed=", 0) == 0) {
-                out << "GameSpeed=" << options.gameSpeed << "\n";
+                out << "GameSpeed=" << (6 - (options.gameSpeed < 0 ? 0 : options.gameSpeed > 6 ? 6 : options.gameSpeed)) << "\n";
                 continue;
             }
             out << line << "\n";
