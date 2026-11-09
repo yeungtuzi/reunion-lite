@@ -839,7 +839,7 @@ int main(int argc, char** argv) {
             proc->setProcessChannelMode(QProcess::MergedChannels);
             proc->setStandardOutputFile(LogFilePath());
             proc->setProgram(bin);
-            proc->setArguments({"-SPAWN"});
+            proc->setArguments({"-SPAWN", "-SPEEDCONTROL"});
             QObject::connect(proc, &QProcess::errorOccurred, [&, proc](QProcess::ProcessError) {
                 setStatus("启动 VERA20K 失败：" + proc->errorString());
             });

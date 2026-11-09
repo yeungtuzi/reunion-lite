@@ -108,10 +108,11 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
 
     // 1. spawn.ini / spawn-vera.ini.
     //    gamemd reads the ANSI codepage; VERA reads UTF-8 and (in our fork)
-    //    honours RA2_SPAWN_INI.  Our patched pacer maps the slider in the
-    //    retail direction (6 = uncapped, 5 = 60 Hz), so the launcher's 0..6
-    //    value is written through unchanged.
-    const int veraSpeed = std::max(0, std::min(6, options.gameSpeed));
+    //    honours RA2_SPAWN_INI. Both store the native direction: 0 is the
+    //    fastest slider position and 6 the slowest, so the launcher's
+    //    slow-to-fast 0..6 value is inverted here.
+    const int uiSpeed = std::max(0, std::min(6, options.gameSpeed));
+    const int veraSpeed = 6 - uiSpeed;
     std::string veraIniText = plan.spawnIni;
     {
         const std::string needle = "GameSpeed=";
@@ -168,7 +169,7 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
                 continue;
             }
             if (section == "Options" && trimmed.rfind("GameSpeed=", 0) == 0) {
-                out << "GameSpeed=" << (6 - (options.gameSpeed < 0 ? 0 : options.gameSpeed > 6 ? 6 : options.gameSpeed)) << "\n";
+                out << "GameSpeed=" << veraSpeed << "\n";
                 continue;
             }
             out << line << "\n";

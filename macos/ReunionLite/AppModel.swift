@@ -403,7 +403,7 @@ final class AppModel {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = ["-SPAWN"]
+        process.arguments = ["-SPAWN", "-SPEEDCONTROL"]
         process.currentDirectoryURL = URL(fileURLWithPath: runDir)
         var environment = ProcessInfo.processInfo.environment
         environment["RA2_DIR"] = runDir
@@ -509,7 +509,7 @@ final class AppModel {
                 continue
             }
             if section == "Options" && line.hasPrefix("GameSpeed=") {
-                lines[index] = "GameSpeed=\(speed)"
+                lines[index] = "GameSpeed=\(6 - max(0, min(6, speed)))"
             }
         }
         text = lines.joined(separator: "\n")
