@@ -108,6 +108,21 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 `native sprite drawing requires per-attachment write masks`——
 要上 GLES 需要改渲染器（精灵绘制路径），收益不确定，暂不继续。
 
+**GLES vs Vulkan 2D 基准**（自写 wgpu 2D 精灵 benchmark，4096/16384 个带 alpha 混合的
+实例化四边形，1280×720 离屏目标；同一台 M1000）：
+
+| 负载 | Vulkan | GL/GLES |
+|---|---|---|
+| 4096 quads × 32 px | 820 fps / 1.22 ms | 853 fps / 1.17 ms |
+| 16384 quads × 32 px | 511 fps / 1.96 ms | 385 fps / 2.59 ms |
+| 4096 quads × 128 px（填充率） | 296 fps / 3.38 ms | 239 fps / 4.18 ms |
+
+结论：两者的 2D 开销同一量级，Vulkan 在填充率/大批量更好，GLES 只在极小批次略快。
+因此没有足够收益去为 GLES 重写精灵绘制路径；GPU 端几百 fps 也说明 VERA 的 60 fps
+瓶颈不在 GPU 吞吐，而在引擎每帧的 CPU 开销与周期性尖峰。
+
+benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓库发布）。
+
 工具：`VERA_FPS_LOG=2000` 会把每 2 秒的帧率与最坏帧间隔写进 `Run/logs/ra2.log`；
 `VERA_WINDOW_SIZE=1920x1080` + `WINIT_X11_SCALE_FACTOR=1` 实现低分辨率渲染 +
 合成器上采样（启动器「低分辨率渲染 + 系统上采样」勾选项即这两条）。
