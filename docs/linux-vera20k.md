@@ -135,6 +135,22 @@ benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓�
 | thin LTO + `codegen-units=1` | 不限帧峰值 87 → **97 fps**；二进制 91 → 78 MB；编译 4–5 → 9–10 min |
 | `-C target-cpu=native`（A78，本地构建） | 与 LTO 合计降低单位帧 CPU 成本 |
 
+**PGO**（`scripts/linux/build-vera20k-pgo.sh`，instrument → 跑一局 45 s → merge → profile-use，
+与 LTO 叠加）：`cpu_ms/frame` 15.39 → **14.74**（约 −4%，同一负载下 3 轮中位数）。
+
+**发布构建**：`-C target-cpu=neoverse-n1` + PGO + mimalloc（A78 兼容、可移植），
+与 native 版性能持平（15.0 对 14.9 ms），作为对外产物口径；本地自用仍可 `native`。
+
+**验收对照**（aibook，1080p、faster、60 上限、交替 3 轮，机器 load ≈ 7.6）：
+
+| 构建 | fps 均值 | CPU 核 | cpu_ms/frame |
+|---|---|---|---|
+| 基线（LTO+native，无 mimalloc/PGO） | 52.5–53.0 | 0.81–0.82 | 15.35–15.63 |
+| 发布版（mimalloc+PGO+neoverse-n1） | 52.5–53.0 | 0.78–0.79 | **14.90–15.01** |
+
+结论：单位帧 CPU 约 −3%，负载低时 mimalloc 的单独收益更明显（−8%）。帧率仍受
+引擎每帧 CPU 工作限制（`build_visible_instances` 等），未到“稳 60”。
+
 当前水位（1080p、`GameSpeed=1`“faster”、60 上限）：帧率窗口 57–59 fps，偶发 45；
 最坏帧 21–38 ms（与分辨率无关 → 引擎 CPU 尖峰）；CPU ≈ 0.55–0.60 核。
 
