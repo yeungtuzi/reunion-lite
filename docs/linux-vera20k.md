@@ -89,9 +89,28 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 | 1600×900 | ~42% | 61–87 fps | 余量更大 |
 | 默认 HiDPI（≈2560×1652） | ~87% | ~60，易掉帧 | 不建议 |
 
-**待办**：偶发掉帧（worst frame 尖峰）不是 GPU 打满造成的（GPU 仍有余量），
-需要在引擎侧继续查周期性的 CPU 尖峰；`VERA_FPS_LOG=2000` 会把每 2 秒的
-帧数与最坏帧间隔写进 `Run/logs/ra2.log`。
+**2026-11-16 复测（补丁版引擎 main，Vulkan + X11，窗口聚焦）**：
+
+| 渲染分辨率 | GPU | 2 s 帧率窗口 | 最坏帧 |
+|---|---|---|---|
+| 1920×1080 | 76% | 56.7–58.3（一次 44.4） | 25–38 ms |
+| 1280×720 | 51% | 52.9–59.3 | 28–34 ms |
+
+结论：降低分辨率能把 GPU 从 76% 降到 51%，但**最坏帧仍在 25–38 ms**，
+说明剩下的偶发卡顿是 **CPU/引擎侧尖峰**（约 2 帧预算），不是填充率；
+要继续逼近“稳 60”，得在引擎里找这些周期性尖峰（仿真 tick、资源上传等）。
+
+**GL/GLES 路径（用户建议优先试）**：MTGPU 的 EGL/GLES 3.2 在 X11 下正常
+（`eglinfo` 显示 `M1000 / OpenGL ES 3.2`），wgpu 也能枚举到 `M1000 (Gl)`，
+但 VERA 的渲染器依赖 wgpu GL 后端没有的能力：
+`per-attachment write masks`、`VIEW_FORMATS`、surface `COPY_SRC/COPY_DST`。
+前两项我们在 `gpu.rs` 里对 GL 后端做了放宽，最后仍卡在
+`native sprite drawing requires per-attachment write masks`——
+要上 GLES 需要改渲染器（精灵绘制路径），收益不确定，暂不继续。
+
+工具：`VERA_FPS_LOG=2000` 会把每 2 秒的帧率与最坏帧间隔写进 `Run/logs/ra2.log`；
+`VERA_WINDOW_SIZE=1920x1080` + `WINIT_X11_SCALE_FACTOR=1` 实现低分辨率渲染 +
+合成器上采样（启动器「低分辨率渲染 + 系统上采样」勾选项即这两条）。
 
 ## 已知问题（0.5）
 
