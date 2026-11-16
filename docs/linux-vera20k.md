@@ -123,6 +123,24 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 
 benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓库发布）。
 
+### CPU 侧优化（2026-11-17）
+
+在 aibook（Cortex-A78 ×4）上用 `perf` + `top -H` + 自写计时脚本量化，逐项提交到
+`yeungtuzi/vera20k`：
+
+| 措施 | 结论 |
+|---|---|
+| `CellLightGrid` 按 `(profile, scalar)` 缓存调色板 tint | 每帧 1732 个格子不再重复算调色板 |
+| **mimalloc**（aarch64 Linux，feature `mimalloc-alloc`） | `cpu_ms/frame` 中位数 8.58 → **7.88 ms**（约 −8%），CPU 核 0.59 → 0.55 |
+| thin LTO + `codegen-units=1` | 不限帧峰值 87 → **97 fps**；二进制 91 → 78 MB；编译 4–5 → 9–10 min |
+| `-C target-cpu=native`（A78，本地构建） | 与 LTO 合计降低单位帧 CPU 成本 |
+
+当前水位（1080p、`GameSpeed=1`“faster”、60 上限）：帧率窗口 57–59 fps，偶发 45；
+最坏帧 21–38 ms（与分辨率无关 → 引擎 CPU 尖峰）；CPU ≈ 0.55–0.60 核。
+
+A/B 方法：同一二进制分别以 `--no-default-features` 编译（无 mimalloc），交替跑 3 轮，
+用 `/proc/<pid>/stat` 的 utime+stime 除以日志里的帧数得到 `cpu_ms/frame`。
+
 工具：`VERA_FPS_LOG=2000` 会把每 2 秒的帧率与最坏帧间隔写进 `Run/logs/ra2.log`；
 `VERA_WINDOW_SIZE=1920x1080` + `WINIT_X11_SCALE_FACTOR=1` 实现低分辨率渲染 +
 合成器上采样（启动器「低分辨率渲染 + 系统上采样」勾选项即这两条）。
