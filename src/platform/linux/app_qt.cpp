@@ -657,6 +657,13 @@ int main(int argc, char** argv) {
             "走 Wayland 会自动退回 llvmpipe。", &dlg);
         veraBackendHint->setWordWrap(true);
         form->addRow(veraBackendHint);
+        auto* veraUpscale = new QCheckBox(
+            "低分辨率渲染 + 系统上采样（省 GPU；画面略糊，推荐 60 FPS）", &dlg);
+        veraUpscale->setChecked(settings.value("veraUpscale", true).toBool());
+        veraUpscale->setToolTip(
+            "设置 WINIT_X11_SCALE_FACTOR=1，让引擎按“窗口分辨率”渲染，"
+            "再由合成器放大到面板分辨率。");
+        form->addRow(veraUpscale);
 
         heading("高级");
         auto* hideOnLaunch = new QCheckBox("启动游戏后隐藏启动器（省电）", &dlg);
@@ -724,6 +731,7 @@ int main(int argc, char** argv) {
             settings.setValue("videoHeight", res.height());
             settings.setValue("videoRenderer", renderer->currentData().toString());
             settings.setValue("veraBackend", veraBackend->currentData().toString());
+            settings.setValue("veraUpscale", veraUpscale->isChecked());
             resolutionLabel->setText(QString("%1 × %2")
                                          .arg(res.width())
                                          .arg(res.height()));
@@ -806,8 +814,8 @@ int main(int argc, char** argv) {
             QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
             env.insert("RA2_DIR", runDir);
             env.insert("RA2_SPAWN_INI", runDir + "/spawn-vera.ini");
+            // Upstream already installs team AI that names unresolved types.
             env.insert("VERA_TOLERANT_AI", "1");
-            env.insert("VERA_FPS_CAP", "60");
             // MTGPU: the vendor Vulkan ICD lives in /etc/vulkan/icd.d and only
             // advertises X11 surfaces, so run the engine through XWayland when
             // we use it; otherwise stay on Wayland with llvmpipe.
@@ -829,6 +837,13 @@ int main(int argc, char** argv) {
                 env.remove("VK_ICD_FILENAMES");
             }
             env.insert("VERA_FPS_CAP_IDLE", "15");
+            if (settings.value("veraUpscale", true).toBool()) {
+                env.insert("WINIT_X11_SCALE_FACTOR", "1");
+                env.insert("VERA_WINDOW_SIZE",
+                           QString("%1x%2")
+                               .arg(settings.value("videoWidth", 1920).toInt())
+                               .arg(settings.value("videoHeight", 1080).toInt()));
+            }
             env.insert("LANG", "zh_CN.GBK");
             if (settings.value("fpsCounter", false).toBool())
                 env.insert("VERA_FPS_COUNTER", "1");

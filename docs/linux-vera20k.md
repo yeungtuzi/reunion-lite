@@ -72,6 +72,27 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
   `khronos-egl` panic；而 llvmpipe 的 GL 又缺
   `TextureUsages(COPY_SRC | COPY_DST)`，VERA 会拒绝初始化。
 
+## 性能排查（aibook / M1000，2026-11）
+
+**根因**：KDE 缩放 2 时，引擎按逻辑尺寸开窗、按物理像素渲染——
+1024×768 的窗口实际是 2048×1536 的 surface，GPU 占用 ~87%，帧率贴着 60 并偶发掉帧。
+
+**处置**：`设置 → 画面` 勾选「低分辨率渲染 + 系统上采样」。
+启动器会设置 `WINIT_X11_SCALE_FACTOR=1` 和 `VERA_WINDOW_SIZE=<分辨率>`（需补丁版引擎），
+引擎按该分辨率渲染，合成器放大到面板——画面略糊，但 GPU 负载大幅下降。
+
+实测（GameSpeed=1，即最快档；M1000 Vulkan + X11）：
+
+| 渲染分辨率 | GPU | 帧率窗口（2 s） | 备注 |
+|---|---|---|---|
+| 1920×1080 | ~52% | 65–74 fps，偶发 48 | 满足 60 FPS，偶发掉帧待查 |
+| 1600×900 | ~42% | 61–87 fps | 余量更大 |
+| 默认 HiDPI（≈2560×1652） | ~87% | ~60，易掉帧 | 不建议 |
+
+**待办**：偶发掉帧（worst frame 尖峰）不是 GPU 打满造成的（GPU 仍有余量），
+需要在引擎侧继续查周期性的 CPU 尖峰；`VERA_FPS_LOG=2000` 会把每 2 秒的
+帧数与最坏帧间隔写进 `Run/logs/ra2.log`。
+
 ## 已知问题（0.5）
 
 - 部分第三方 MOD 单位渲染异常：林德拉克计划的机甲、命运之瞳等；其余任务包基本正常。
