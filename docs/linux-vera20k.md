@@ -123,6 +123,26 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 
 benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓库发布）。
 
+### 0.3.5「卡在启动画面」的真正原因：`VERA_AUDIO_BUFFER`（2026-11-17）
+
+把 `rebase-0.3.5` 构建接到启动器流程时，引擎停在
+`Initialization complete / 6 quads / frames=1`，主线程 `ep_poll` 空闲。
+逐项排除：不是 `-SPEEDCONTROL`、不是 `VERA_WINDOW_SIZE`、不是焦点丢失。
+
+A/B 结果：
+
+| 环境 | 结果 |
+|---|---|
+| `VERA_AUDIO_BUFFER=4096`（或 2048） | 启动即卡死，0 帧 |
+| 不设该变量（自动 = `sample_rate/100`） | 正常进任务，60.0 fps，mean gap 16.7 ms，jitter 1.9–4.5 ms |
+
+⇒ 这台机器的 cpal 设备在较大周期下开流失败/阻塞，把主线程一起挂住。
+启动器的「音频缓冲」默认值因此改回 **自动**；确有破音时再逐档（256/512）试，
+不要直接给 2048 以上。
+
+顺带确认：0.3.5 上没有帧率上限（VSync 开时按刷新率跑，实测 150–260 fps），
+所以 0.3.5 分支补了 `present_cap`（`VERA_FPS_CAP` 默认 60），实测稳定 60.0 fps。
+
 ### tint 缓存：微基准证明是负优化（2026-11-17）
 
 对 `CellLightGrid::tint_for_common_scalar_or_default` 做记忆化后，用同一份 micro-bench
