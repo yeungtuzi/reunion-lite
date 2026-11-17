@@ -17,4 +17,8 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
 // $XDG_DATA_HOME/VERA20k/VERA.INI (defaults to ~/.local/share/VERA20k/VERA.INI).
 std::string VeraIniPath();
 
+// The INI the engine actually loads: the `settings_dir` that config.toml
+// declares ($XDG_DATA_HOME/reunion-lite/vera20k-settings/VERA.INI).
+std::string VeraSettingsIniPath();
+
 } // namespace rlwin

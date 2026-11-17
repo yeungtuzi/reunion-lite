@@ -96,6 +96,10 @@ std::string VeraIniPath() {
     return DataHome() + "/VERA20k/VERA.INI";
 }
 
+std::string VeraSettingsIniPath() {
+    return DataHome() + "/reunion-lite/vera20k-settings/VERA.INI";
+}
+
 bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options,
                     std::string& error) {
     // Reunion ships an already merged asset root; VERA still insists on the
@@ -153,8 +157,9 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
     }
 
     // 4. VERA.INI game speed (the engine owns the campaign pace there).
+    for (const std::string& path : {VeraIniPath(), VeraSettingsIniPath()}) {
     std::string ini;
-    if (ReadFile(VeraIniPath(), ini)) {
+    if (ReadFile(path, ini)) {
         std::istringstream in(ini);
         std::ostringstream out;
         std::string line;
@@ -174,7 +179,8 @@ bool PrepareVera20k(const rl::LaunchPlan& plan, const rl::LaunchOptions& options
             }
             out << line << "\n";
         }
-        WriteFile(VeraIniPath(), out.str());
+        WriteFile(path, out.str());
+    }
     }
     return true;
 }

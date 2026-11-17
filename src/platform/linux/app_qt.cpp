@@ -850,15 +850,20 @@ int main(int argc, char** argv) {
             // ([VERA]), so the launcher's boxes must land there as well as in
             // the environment: newer engines read the file, older ones the env.
             {
-                QSettings veraIni(QString::fromStdString(rlwin::VeraIniPath()),
-                                  QSettings::IniFormat);
-                veraIni.beginGroup("VERA");
-                veraIni.setValue("VSync",
-                                 settings.value("vsync", true).toBool() ? "yes" : "no");
-                veraIni.setValue("RenderInterpolation",
-                                 settings.value("interpolation", true).toBool() ? "yes" : "no");
-                veraIni.endGroup();
-                veraIni.sync();
+                // The engine reads the INI under config.toml's `settings_dir`,
+                // not the launcher's own copy; write both so an engine using
+                // either location sees the boxes.
+                for (const std::string& path :
+                     {rlwin::VeraIniPath(), rlwin::VeraSettingsIniPath()}) {
+                    QSettings veraIni(QString::fromStdString(path), QSettings::IniFormat);
+                    veraIni.beginGroup("VERA");
+                    veraIni.setValue("VSync",
+                                     settings.value("vsync", true).toBool() ? "yes" : "no");
+                    veraIni.setValue("RenderInterpolation",
+                                     settings.value("interpolation", true).toBool() ? "yes" : "no");
+                    veraIni.endGroup();
+                    veraIni.sync();
+                }
             }
             const QString bin = FindVera20k();
             qWarning("vera binary: %s", qPrintable(bin.isEmpty() ? "(not found)" : bin));
