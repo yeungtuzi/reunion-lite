@@ -873,6 +873,9 @@ int main(int argc, char** argv) {
             } else if (backend == "software") {
                 env.remove("VK_ICD_FILENAMES");
             }
+            // The engine refuses a direct launch without this token, so only
+            // the launcher (which enforces one running copy) can start it.
+            env.insert("REUNION_LITE_LAUNCH", "1");
             env.insert("VERA_FPS_CAP_IDLE", "15");
             // Retail leaves interpolation off, which makes units step at the
             // simulation tick (50 TPS at the faster speed) instead of moving
