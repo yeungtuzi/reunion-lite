@@ -718,7 +718,7 @@ int main(int argc, char** argv) {
         audioBuffer->setRange(0, 4096);
         audioBuffer->setSingleStep(256);
         audioBuffer->setSpecialValueText("自动");
-        audioBuffer->setValue(settings.value("audioBuffer", 4096).toInt());
+        audioBuffer->setValue(settings.value("audioBuffer", 0).toInt());
         audioBuffer->setToolTip("VERA20K 音频周期（帧）；0 = 引擎默认。加载任务时爆音可调到 2048。");
         form->addRow("VERA20K 音频缓冲", audioBuffer);
         auto* fpsHint = new QLabel("游戏内也可以按 Ctrl+Alt+F 切换。", &dlg);
@@ -922,8 +922,8 @@ int main(int argc, char** argv) {
             env.insert("LANG", "zh_CN.GBK");
             if (settings.value("fpsCounter", true).toBool())
                 env.insert("VERA_FPS_COUNTER", "1");
-            if (settings.value("audioBuffer", 4096).toInt() > 0)
-                env.insert("VERA_AUDIO_BUFFER", QString::number(settings.value("audioBuffer", 4096).toInt()));
+            if (settings.value("audioBuffer", 0).toInt() > 0)
+                env.insert("VERA_AUDIO_BUFFER", QString::number(settings.value("audioBuffer", 0).toInt()));
             proc->setProcessEnvironment(env);
             proc->setWorkingDirectory(runDir);
             proc->setProcessChannelMode(QProcess::MergedChannels);
