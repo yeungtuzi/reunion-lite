@@ -123,6 +123,18 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 
 benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓库发布）。
 
+### 0.3.5 构建的可切换接入（2026-11-17）
+
+- 0.3.5 构建：`~/.local/bin/vera20k-035`（fork 0.2.8 仍是 `~/.local/bin/vera20k`）
+- 启动器里切换：设置里把「VERA20K 二进制」指到 `vera20k-035`，或改
+  `~/.config/reunion-lite/reunion-lite.conf` 的 `vera20kBin=`
+- 已验证（启动器同款环境：`-SPAWN -SPEEDCONTROL`、`VERA_WINDOW_SIZE=1920x1080`、
+  `WINIT_X11_SCALE_FACTOR=1`、`REUNION_LITE_LAUNCH=1`、`VERA_AUDIO_BUFFER=1024`）：
+  任务正常进入，`frames=3282 / 52.75 s`，渲染稳定 60.0 fps，mean gap 16.7 ms，
+  jitter 2–4 ms，声音无破音。
+- 已知差异：0.3.5 分支还没有 `VERA_HW_CURSOR` 硬件光标移植（0.2.8 fork 有），
+  切换后光标走软件绘制路径。
+
 ### 0.3.5「卡在启动画面」的真正原因：`VERA_AUDIO_BUFFER`（2026-11-17）
 
 把 `rebase-0.3.5` 构建接到启动器流程时，引擎停在
