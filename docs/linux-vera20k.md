@@ -123,6 +123,22 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 
 benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓库发布）。
 
+### 流畅度与启动策略（2026-11-17）
+
+| 问题 | 处理 |
+|---|---|
+| 单位行进“一顿一顿” | 启动器默认注入 `VERA20K_RENDER_INTERPOLATION=1`（retail 默认为关，模拟只有 50 TPS） |
+| 帧间抖动 | `pace_frame` 改为**固定 60 Hz 网格**（迟帧跳到下一格，不累积欠账）；`desired_maximum_frame_latency` 2 → 1 |
+| 偶发掉到 30 fps | 常见原因是跑了两个实例抢 GPU；引擎加 **unix flock 单实例锁**，启动器再预检一次 |
+| 直接执行引擎 | Linux 下引擎要求 `REUNION_LITE_LAUNCH=1`（启动器注入），否则打印提示并退出 1 |
+| 鼠标不跟手 | `VERA_HW_CURSOR=1`：软件光标不再绘制，改由合成器合成，**保留 retail 光标美术**（按当前光标 id/帧切换 `CustomCursor`） |
+| 光标偏小 | 硬件光标按“面板宽度 / 窗口宽度”等比最近邻放大，与画面放大倍率一致 |
+| 观测 | `VERA_FPS_LOG` 每窗口输出 `worst frame`、`mean gap`、`jitter`（帧间隔标准差）；启动器默认开性能指示 |
+
+实测（aibook，1080p + 上采样，faster，60 上限，3 分钟含脚本化单位移动）：
+帧率稳定 58–60 fps，`mean gap 16.7 ms`，`jitter 2.1–3.1 ms`，最坏帧 21–35 ms；
+任务切换那一次仍有 ~0.8 s 的同步加载尖峰（已知问题）。
+
 ### CPU 侧优化（2026-11-17）
 
 在 aibook（Cortex-A78 ×4）上用 `perf` + `top -H` + 自写计时脚本量化，逐项提交到
