@@ -695,6 +695,11 @@ int main(int argc, char** argv) {
             "对应引擎的 VERA20K_RENDER_INTERPOLATION=1：单位在两次模拟 tick 之间平滑插值，"
             "任务里单位前进不再一顿一顿。");
         form->addRow(interpolation);
+        auto* vsync = new QCheckBox("垂直同步（关闭可降低输入延迟，可能撕裂）", &dlg);
+        vsync->setChecked(settings.value("vsync", true).toBool());
+        vsync->setToolTip(
+            "开启：Fifo，画面无撕裂；关闭：AutoNoVsync + 单帧排队，输入延迟最低。"); 
+        form->addRow(vsync);
 
         heading("高级");
         auto* hideOnLaunch = new QCheckBox("启动游戏后隐藏启动器（省电）", &dlg);
@@ -764,6 +769,7 @@ int main(int argc, char** argv) {
             settings.setValue("veraBackend", veraBackend->currentData().toString());
             settings.setValue("veraUpscale", veraUpscale->isChecked());
             settings.setValue("interpolation", interpolation->isChecked());
+            settings.setValue("vsync", vsync->isChecked());
             resolutionLabel->setText(QString("%1 × %2")
                                          .arg(res.width())
                                          .arg(res.height()));
@@ -884,6 +890,7 @@ int main(int argc, char** argv) {
             // simulation tick (50 TPS at the faster speed) instead of moving
             // smoothly with the frame.  On by default here; the options page
             // can turn it off.
+            env.insert("VERA_VSYNC", settings.value("vsync", true).toBool() ? "1" : "0");
             if (settings.value("interpolation", true).toBool())
                 env.insert("VERA20K_RENDER_INTERPOLATION", "1");
             if (settings.value("veraUpscale", true).toBool()) {
