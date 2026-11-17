@@ -156,6 +156,19 @@ A/B 结果：
 顺带确认：0.3.5 上没有帧率上限（VSync 开时按刷新率跑，实测 150–260 fps），
 所以 0.3.5 分支补了 `present_cap`（`VERA_FPS_CAP` 默认 60），实测稳定 60.0 fps。
 
+### 0.3.6 基线与 trainer（2026-11-17 晚）
+
+- 引擎基线换成 fork 的 `main`（0.3.6 合并版），被 merge 丢掉的接线已补回：
+  `present_cap`（60 fps 上限）、`VERA_FPS_LOG`、`VERA_HW_CURSOR`、`VERA_WINDOW_SIZE`、
+  `VERA_FPS_COUNTER`、启动器 token、`VERA_VSYNC` 日志。
+- trainer 面板需要 `--features debug-tools` 构建（CI 的 Linux 包就是这样打的）。
+  热键：Linux **Ctrl+Alt+=**（Ctrl+Alt+T 与桌面终端快捷键冲突），macOS 仍是 Cmd+Alt+T。
+- 速度滑杆是模拟 TPS，不是渲染帧率；启动器档位命名并默认「较快（推荐）」。
+- 发布：`v0.5.7` 四平台包，Linux aarch64 包内 `vera20k` 实测
+  `present mode: Fifo, queued frames: 2`、`SFX output buffer: 1024`、
+  `presentation cap: 60 fps`、`hardware cursor: on`、稳定 60.1 fps / jitter 3.9 ms，
+  第二实例被拒。
+
 ### tint 缓存：微基准证明是负优化（2026-11-17）
 
 对 `CellLightGrid::tint_for_common_scalar_or_default` 做记忆化后，用同一份 micro-bench
