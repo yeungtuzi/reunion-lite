@@ -123,6 +123,20 @@ active YR aimd.ini failed RuleSet resolution: [UnknownTaskForceMember ...]
 
 benchmark 源码：`/root/lvllm/repos/wgpu-2d-bench`（本地工具，未随仓库发布）。
 
+### tint 缓存：微基准证明是负优化（2026-11-17）
+
+对 `CellLightGrid::tint_for_common_scalar_or_default` 做记忆化后，用同一份 micro-bench
+（2048 格 × 60 帧，release 构建，aibook A78）对比上游原版：
+
+| 版本 | ns/lookup |
+|---|---|
+| 上游原版（每次算 palette） | **14.4** |
+| 加缓存后（thread-local + generation + 二次哈希） | 34.5 |
+
+原因：palette 本身已在 `LightProfileCache` 里缓存，`key_to_rgb` 只是 3 次除法；
+记忆化多出来的是一次哈希 + RefCell + 原子读，比省下的计算更贵。
+⇒ 这条**不提上游 PR**，分支留在 `perf/lighting-tint-cache` 仅作记录。
+
 ### 流畅度与启动策略（2026-11-17）
 
 | 问题 | 处理 |
