@@ -49,9 +49,34 @@
 #include <map>
 #include <cstdlib>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/file.h>
 #include <functional>
 #include <string>
 #include <vector>
+
+namespace {
+
+// Mirrors the engine's unix single-instance gate: the first process holds an
+// exclusive flock on $XDG_RUNTIME_DIR/vera20k/instance.lock. Probing it here
+// keeps the launcher from spawning a copy that would exit immediately.
+bool VeraInstanceRunning() {
+    const QByteArray runtime = qgetenv("XDG_RUNTIME_DIR");
+    const QString dir = runtime.isEmpty() ? QDir::tempPath() + "/vera20k"
+                                          : QString::fromUtf8(runtime) + "/vera20k";
+    QDir().mkpath(dir);
+    const QByteArray path = QFile::encodeName(dir + "/instance.lock");
+    const int fd = ::open(path.constData(), O_RDWR | O_CREAT, 0600);
+    if (fd < 0)
+        return false;
+    const bool busy = ::flock(fd, LOCK_EX | LOCK_NB) != 0;
+    if (!busy)
+        ::flock(fd, LOCK_UN);
+    ::close(fd);
+    return busy;
+}
+
+} // namespace
 
 static rl::Campaign g_campaign;
 static rl::LaunchOptions g_options;
@@ -664,6 +689,12 @@ int main(int argc, char** argv) {
             "设置 WINIT_X11_SCALE_FACTOR=1，让引擎按“窗口分辨率”渲染，"
             "再由合成器放大到面板分辨率。");
         form->addRow(veraUpscale);
+        auto* interpolation = new QCheckBox("单位移动插值（RenderInterpolation，消除行进顿挫）", &dlg);
+        interpolation->setChecked(settings.value("interpolation", true).toBool());
+        interpolation->setToolTip(
+            "对应引擎的 VERA20K_RENDER_INTERPOLATION=1：单位在两次模拟 tick 之间平滑插值，"
+            "任务里单位前进不再一顿一顿。");
+        form->addRow(interpolation);
 
         heading("高级");
         auto* hideOnLaunch = new QCheckBox("启动游戏后隐藏启动器（省电）", &dlg);
@@ -732,6 +763,7 @@ int main(int argc, char** argv) {
             settings.setValue("videoRenderer", renderer->currentData().toString());
             settings.setValue("veraBackend", veraBackend->currentData().toString());
             settings.setValue("veraUpscale", veraUpscale->isChecked());
+            settings.setValue("interpolation", interpolation->isChecked());
             resolutionLabel->setText(QString("%1 × %2")
                                          .arg(res.width())
                                          .arg(res.height()));
@@ -803,6 +835,11 @@ int main(int argc, char** argv) {
                 setStatus(QString::fromStdString("VERA20K 准备失败：" + veraError));
                 return;
             }
+            if (VeraInstanceRunning()) {
+                qWarning("another VERA20K instance owns the runtime lock");
+                setStatus("VERA20K 已在运行：请先关闭现有窗口再启动。");
+                return;
+            }
             const QString bin = FindVera20k();
             qWarning("vera binary: %s", qPrintable(bin.isEmpty() ? "(not found)" : bin));
             if (bin.isEmpty()) {
@@ -837,6 +874,12 @@ int main(int argc, char** argv) {
                 env.remove("VK_ICD_FILENAMES");
             }
             env.insert("VERA_FPS_CAP_IDLE", "15");
+            // Retail leaves interpolation off, which makes units step at the
+            // simulation tick (50 TPS at the faster speed) instead of moving
+            // smoothly with the frame.  On by default here; the options page
+            // can turn it off.
+            if (settings.value("interpolation", true).toBool())
+                env.insert("VERA20K_RENDER_INTERPOLATION", "1");
             if (settings.value("veraUpscale", true).toBool()) {
                 env.insert("WINIT_X11_SCALE_FACTOR", "1");
                 env.insert("VERA_WINDOW_SIZE",
