@@ -707,7 +707,7 @@ int main(int argc, char** argv) {
         extraArgs->setPlaceholderText("附加给 gamemd 的参数，例如 -LOG -CD");
         form->addRow("附加启动参数", extraArgs);
         auto* fpsCounter = new QCheckBox("性能指示（VERA20K 启动即显示 FPS 读数）", &dlg);
-        fpsCounter->setChecked(settings.value("fpsCounter", false).toBool());
+        fpsCounter->setChecked(settings.value("fpsCounter", true).toBool());
         form->addRow(fpsCounter);
         auto* audioBuffer = new QSpinBox(&dlg);
         audioBuffer->setRange(0, 4096);
@@ -876,6 +876,9 @@ int main(int argc, char** argv) {
             // The engine refuses a direct launch without this token, so only
             // the launcher (which enforces one running copy) can start it.
             env.insert("REUNION_LITE_LAUNCH", "1");
+            // The software cursor is a frame behind the hand; the compositor's
+            // cursor follows at the display rate.
+            env.insert("VERA_HW_CURSOR", "1");
             env.insert("VERA_FPS_CAP_IDLE", "15");
             // Retail leaves interpolation off, which makes units step at the
             // simulation tick (50 TPS at the faster speed) instead of moving
@@ -891,7 +894,7 @@ int main(int argc, char** argv) {
                                .arg(settings.value("videoHeight", 1080).toInt()));
             }
             env.insert("LANG", "zh_CN.GBK");
-            if (settings.value("fpsCounter", false).toBool())
+            if (settings.value("fpsCounter", true).toBool())
                 env.insert("VERA_FPS_COUNTER", "1");
             if (settings.value("audioBuffer", 0).toInt() > 0)
                 env.insert("VERA_AUDIO_BUFFER", QString::number(settings.value("audioBuffer").toInt()));
