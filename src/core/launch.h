@@ -23,7 +23,7 @@ struct LaunchOptions {
     std::string modId;          // empty => mission default
     int difficulty = 1;         // 0 easy, 1 medium, 2 hard
     int credits = -1;           // -1 = leave map value untouched
-    int gameSpeed = 2;          // written as-is to spawn.ini
+    int gameSpeed = 5;          // retail trackbar position; 5 = "Faster"
     int autosave = 0;           // 0 off, 1 = 5 min, 2 = 10 min, 3 = 20 min
     int musicVolume = -1;       // -1 keep game setting, 0 off, else percent
     bool playMovies = true;     // show briefing/loading screen and mission videos

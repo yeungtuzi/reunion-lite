@@ -36,7 +36,7 @@ bool LoadClientDefaults(const std::string& gameRootUtf8, LaunchOptions& options)
         options.credits = kCreditsValues[creditsIndex];
 
     int speed = ini.GetInt("GameOptions", "cmbGameSpeed", options.gameSpeed);
-    if (speed < 0 || speed > 6) speed = 2;
+    if (speed < 0 || speed > 6) speed = 5;
     options.gameSpeed = speed;
 
     int autosave = ini.GetInt("GameOptions", "cmbAutosave", options.autosave);

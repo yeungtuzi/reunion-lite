@@ -248,7 +248,13 @@ int main(int argc, char** argv) {
     credits->addItem("50,000", 50000);
     credits->addItem("100,000", 100000);
     auto* speed = new QComboBox(inspector);
-    for (int i = 0; i <= 6; ++i) speed->addItem(QString::number(i), i);
+    // Retail's trackbar positions, slowest first: the engine stores
+    // `GameSpeed = 6 - position`. "Faster" (5) is the default the campaign
+    // recommends; "60 ticks/s" is the 0 position, not a frame rate.
+    static const char* const kSpeedNames[] = {"最慢", "较慢", "慢", "中等",
+                                              "快", "较快（推荐）", "60 ticks/s"};
+    for (int i = 0; i <= 6; ++i) speed->addItem(kSpeedNames[i], i);
+    speed->setCurrentIndex(5);
     auto* autosave = new QComboBox(inspector);
     autosave->addItems({"关闭", "5 分钟", "10 分钟", "20 分钟"});
     auto* music = new QComboBox(inspector);
