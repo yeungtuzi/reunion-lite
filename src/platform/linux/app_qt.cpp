@@ -846,6 +846,20 @@ int main(int argc, char** argv) {
                 setStatus("VERA20K 已在运行：请先关闭现有窗口再启动。");
                 return;
             }
+            // The engine persists VSync and render interpolation in VERA.INI
+            // ([VERA]), so the launcher's boxes must land there as well as in
+            // the environment: newer engines read the file, older ones the env.
+            {
+                QSettings veraIni(QString::fromStdString(rlwin::VeraIniPath()),
+                                  QSettings::IniFormat);
+                veraIni.beginGroup("VERA");
+                veraIni.setValue("VSync",
+                                 settings.value("vsync", true).toBool() ? "yes" : "no");
+                veraIni.setValue("RenderInterpolation",
+                                 settings.value("interpolation", true).toBool() ? "yes" : "no");
+                veraIni.endGroup();
+                veraIni.sync();
+            }
             const QString bin = FindVera20k();
             qWarning("vera binary: %s", qPrintable(bin.isEmpty() ? "(not found)" : bin));
             if (bin.isEmpty()) {
