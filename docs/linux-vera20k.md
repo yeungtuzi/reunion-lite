@@ -156,6 +156,24 @@ A/B 结果：
 顺带确认：0.3.5 上没有帧率上限（VSync 开时按刷新率跑，实测 150–260 fps），
 所以 0.3.5 分支补了 `present_cap`（`VERA_FPS_CAP` 默认 60），实测稳定 60.0 fps。
 
+### 0.3.8 + 本机编译优化（2026-11-22，192.168.100.70）
+
+- 部署在 `~/reunion-lite/{app,game}`，xfce/KDE 菜单项「Reunion Lite / 重聚 Lite」，
+  引擎走原生 VERA20K（x86_64），启动器配置 `engine=vera20k`。
+- 上游 0.3.8 的合并又丢了 fork 的 Linux 接线（60 fps 上限、`VERA_WINDOW_SIZE`、
+  `VERA_FPS_LOG`、启动器 token），已在分支 `linux-hooks-0.3.8` 补回并重新编译。
+- 编译参数：`-C target-cpu=x86-64-v3`、`lto = "thin"`、`codegen-units = 1`、
+  `--features debug-tools`，并把 mimalloc 扩到 Linux x86_64。
+- 帧率修复：pacing 在“迟到帧”时改为**从当前时刻重开 60 Hz 网格**，不再跳到下一个网格点
+  （旧行为会把一帧 25 ms 放大成 33 ms，读数掉到 30–40 fps）。
+
+A/B（4K 全屏，Intel Iris Plus G7，同一关卡）：
+
+| 构建 | FPS | mean gap | jitter | CPU |
+|---|---|---|---|---|
+| 旧 pacing（skip 网格） | 31–38 | 26–32 ms | 7–9 ms | 124% |
+| 新 pacing + mimalloc + LTO | **59.6–59.8** | **16.7–16.8 ms** | **4.7–5.0 ms** | 147% |
+
 ### 0.3.6 基线与 trainer（2026-11-17 晚）
 
 - 引擎基线换成 fork 的 `main`（0.3.6 合并版），被 merge 丢掉的接线已补回：
